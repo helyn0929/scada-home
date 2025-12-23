@@ -1,0 +1,44 @@
+.scada-card {
+  background: #2b2b2b;
+  border-radius: 20px;
+  padding: 16px;
+  width: fit-content;
+}
+
+.scada-title {
+  color: white;
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+.scada-svg {
+  width: 100%;
+  max-width: 800px;
+}
+
+.flow {
+  stroke-dasharray: 20;
+  animation: flowMove 1.5s linear infinite;
+}
+
+@keyframes flowMove {
+  from {
+    stroke-dashoffset: 20;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.valve-disc {
+  transform-origin: center;
+  transition: transform 0.6s ease;
+}
+
+.valve.open .valve-disc {
+  transform: rotate(0deg);
+}
+
+.valve.closed .valve-disc {
+  transform: rotate(90deg);
+}

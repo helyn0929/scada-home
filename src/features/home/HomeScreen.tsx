@@ -1,7 +1,18 @@
 import KpiCard from "@/components/kpi/KpiCard"
+import { useLiveTelemetry } from "../telemetry/useLiveTelemetry"
+import NavBar from "@/components/nav/NavBar"
+import ValveStatusMap from "@/components/valves/ValveStatusMap"
+
 
 export default function HomeScreen() {
+  const data = useLiveTelemetry("/api/telemetry");
+
   return (
+    <div className="relative min-h-screen bg-black text-white">
+
+     {/* Floating NavBar */}
+      <NavBar />
+
     <div className="min-h-dvh w-dvw bg-black text-white p-6 flex flex-col items-start gap-6">
       
       {/* Title */}
@@ -14,7 +25,7 @@ export default function HomeScreen() {
       <div className="flex flex-col gap-4">
         <KpiCard
           label="ACTIVE POWER"
-          value={1352}
+          value={data?.power_kw ?? '--'}             //display live data here
           unit="kW"
           icon={
             <img
@@ -26,7 +37,7 @@ export default function HomeScreen() {
         />
         <KpiCard
           label="ENERGY GENERATED"
-          value={350}
+          value={data?.energy_kwh ?? '--'}          //display live data here
           unit="kWh"
           icon={
             <img
@@ -38,7 +49,7 @@ export default function HomeScreen() {
         />
         <KpiCard
           label="DISCHARGE"
-          value={23}
+          value={data?.discharge_cms ?? '--'}          //display live data here
           unit="cms"
           icon={
             <img
@@ -50,7 +61,7 @@ export default function HomeScreen() {
         />
         <KpiCard
           label="CAPACITY FACTOR"
-          value={"92.3"}
+          value={data?.capacity_factor ?? '--'}          //display live data here
           unit="%"
           icon={
             <img
@@ -60,8 +71,14 @@ export default function HomeScreen() {
             />
           }
         />
-      </div>
-    </div>
-  )
-}
+            {/* ✅ Valve Status Map */}
+        <ValveStatusMap valves={data?.valves} />
+
+         </div>
+       </div>
+    
+     </div>       
+  );
+} 
+
 

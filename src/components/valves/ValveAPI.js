@@ -17,6 +17,18 @@ export const ValveAPI = {
         if (body) {
           body.setAttribute("fill", open ? "#06E2F4" : "#FE0C0C");
         }
+
+        // update the visual disc: rotate around its center and set fill color
+        const disc = group.querySelector('.valve-disc');
+        if (disc) {
+          const angle = open ? 0 : 270;
+          disc.style.transform = `rotate(${angle}deg)`;
+          try {
+            disc.setAttribute('fill', open ? '#06E2F4' : '#FE0C0C');
+          } catch (e) {
+            disc.style.fill = open ? '#06E2F4' : '#FE0C0C';
+          }
+        }
     },
 
     //DN1350***future

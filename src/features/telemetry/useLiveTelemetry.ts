@@ -17,6 +17,7 @@ export function useLiveTelemetry(url: string) {
       const sec = Math.floor(now / 1000);
       const toggler = (n: number) => ((sec + n) % 2) === 0;
       const percent = Math.abs((sec % 101));
+      const mainLineOpen = toggler(1); // shared state for dn1400, dn900, dn1400D
 
       return {
         power_kw: 500 + Math.random() * 1000,
@@ -25,9 +26,9 @@ export function useLiveTelemetry(url: string) {
         capacity_factor: Math.random() * 100,
         valves: {
           dn800: { open: toggler(0) },
-          dn900: { open: toggler(1) },
-          dn1400: { open: toggler(2) },
-          dn1400D: { open: toggler(3) },
+          dn900: { open: mainLineOpen },
+          dn1400: { open: mainLineOpen },
+          dn1400D: { open: mainLineOpen },
           dn1350: { open: percent > 0, percent },
         },
       };

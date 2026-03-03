@@ -54,31 +54,32 @@ export default function ValveStatusMap({ valves }: ValveStatusMapProps) {
   useEffect(() => {
     if (!valves || !insertedRef.current || !containerRef.current) return;
     const root = containerRef.current;
+
+    // In operations, dn1400 / dn900 / dn1400D act as one main-line set.
+    // If telemetry ever provides mismatched states, we still display them synchronously.
+    const mainLineOpen = !!(
+      valves.dn900?.open ??
+      valves.dn1400?.open ??
+      valves.dn1400D?.open
+    );
+
     ValveAPI.binary("dn800", valves.dn800?.open, root);
-    ValveAPI.binary("dn1400", valves.dn1400?.open, root);
-    ValveAPI.binary("dn900", valves.dn900?.open, root);
+    ValveAPI.binary("dn1400", mainLineOpen, root);
+    ValveAPI.binary("dn900", mainLineOpen, root);
     ValveAPI.binary("dn1350", valves.dn1350?.open, root);
-    ValveAPI.binary("dn1400D", valves.dn1400D?.open, root);
+    ValveAPI.binary("dn1400D", mainLineOpen, root);
     ValveAPI.ControlDN1350(valves.dn1350, root);
     ValveAPI.flow("flow-bypass", !!valves?.dn800?.open, root);
     ValveAPI.flow("flow-dn1350", !!valves?.dn1350?.open, root);
-    ValveAPI.flow(
-      "flow-dn1400",
-      !!valves?.dn1400?.open &&
-        !!valves?.dn900?.open &&
-        !!valves?.dn1400D?.open,
-      root
-    );
+    ValveAPI.flow("flow-dn1400", mainLineOpen, root);
   }, [valves]);
 
   return (
-    <div className="scada-card">
-      <SvgRenderer
-        ref={containerRef}
-        raw={valveSvgRaw}
-        className="valve-svg-container"
-        onInsert={onSvgInsert}
-      />
-    </div>
+    <SvgRenderer
+      ref={containerRef}
+      raw={valveSvgRaw}
+      className="valve-svg-container"
+      onInsert={onSvgInsert}
+    />
   );
 }

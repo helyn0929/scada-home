@@ -4,6 +4,13 @@ import NavBar from "@/components/nav/NavBar"
 import ValveStatusMap from "@/components/valves/ValveStatusMap"
 
 
+function format1Decimal(value: number | undefined | null) {
+  if (value === undefined || value === null || Number.isNaN(value)) {
+    return "--"
+  }
+  return Number(value).toFixed(1)
+}
+
 export default function HomeScreen() {
   const data = useLiveTelemetry("/api/telemetry");
 
@@ -25,48 +32,48 @@ export default function HomeScreen() {
       <div className="flex flex-col gap-4">
         <KpiCard
           label="ACTIVE POWER"
-          value={data?.power_kw ?? '--'}             //display live data here
+          value={format1Decimal(data?.power_kw)}             // display live data here
           unit="kW"
           icon={
             <img
               src="/assets/icons/bolt.svg"
-              className="h-12 w-12"
+              className="h-10 w-10"
               alt="bolt"
             />
           }
         />
         <KpiCard
           label="ENERGY GENERATED"
-          value={data?.energy_kwh ?? '--'}          //display live data here
+          value={format1Decimal(data?.energy_kwh)}          // display live data here
           unit="kWh"
           icon={
             <img
               src="/assets/icons/active-power.svg"
-              className="h-12 w-12"
+              className="h-10 w-10"
               alt="Active Power"
             />
           }
         />
         <KpiCard
           label="DISCHARGE"
-          value={data?.discharge_cms ?? '--'}          //display live data here
+          value={format1Decimal(data?.discharge_cms)}          // display live data here
           unit="cms"
           icon={
             <img
               src="/assets/icons/water.svg"
-              className="h-12 w-12"
+              className="h-10 w-10"
               alt="water"
             />
           }
         />
         <KpiCard
           label="CAPACITY FACTOR"
-          value={data?.capacity_factor ?? '--'}          //display live data here
+          value={format1Decimal(data?.capacity_factor)}          // display live data here
           unit="%"
           icon={
             <img
               src="/assets/icons/charge.svg"
-              className="h-12 w-12"
+              className="h-10 w-10"
               alt="charge"
             />
           }

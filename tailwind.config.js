@@ -1,9 +1,8 @@
-export default function App() {
-  return (
-    <div className="min-h-dvh w-dvw flex items-center justify-center bg-bg">
-      <h2 className="font-subtitle text-subtitle text-brandSubtitle">
-        AES Mega
-      </h2>
-    </div>
-  )
-}
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};

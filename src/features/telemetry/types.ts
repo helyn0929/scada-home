@@ -1,5 +1,6 @@
 export interface ValveState {
   open: boolean;
+  percent?: number;
 }
 
 export interface Valves {
@@ -18,6 +19,17 @@ export interface TelemetryData {
 
   // 🔹 水文
   discharge_cms?: number;
+
+  // 🔹 噪音
+  noiseIndoor?: number;
+  noiseOutdoor?: number;
+
+  // 🔹 溫度
+  tempWindingU?: number;
+  tempWindingV?: number;
+  tempWindingW?: number;
+  tempControlPanel?: number;
+  tempEnvironment?: number;
 
   // 🔹 閥件
   valves?: Valves;

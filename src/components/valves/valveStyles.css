@@ -16,6 +16,16 @@
   max-width: 800px;
 }
 
+/* Match card width (240px); SVG scales to fit */
+.valve-svg-container {
+  width: 100%;
+}
+.valve-svg-container svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
 /* Water flow animation: applied when ValveAPI.flow marks group as .active */
 #flow-dn1400.active *,
 #flow-dn1350.active *,

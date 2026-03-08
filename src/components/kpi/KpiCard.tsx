@@ -10,7 +10,7 @@ type Props = {
 
 export default function KpiCard({ icon, label, value, unit }: Props) {
   return (
-    <Card className="w-[270px] h-[106px] rounded-[28px] border border-black bg-white/15 shadow-[0_4px_4px_rgba(0,0,0,0.25)] text-white">
+    <Card className="w-[240px] h-[96px] rounded-[24px] border border-black bg-white/15 shadow-[0_4px_4px_rgba(0,0,0,0.25)] text-white">
       {/* FLEX ROW: icon + text side by side, aligned vertically center */}
       <CardContent className="h-full p-4 flex items-center gap-4">
         
@@ -28,12 +28,12 @@ export default function KpiCard({ icon, label, value, unit }: Props) {
 
         {/* TEXTS */}
         <div className="flex flex-col justify-center flex-1">
-          <div className="font-[600] text-[16px] leading-[19px] text-white/90 whitespace-nowrap">
+          <div className="font-[600] text-[14px] leading-[17px] text-white/90 whitespace-nowrap">
             {label}
           </div>
 
           <div className="mt-1 flex items-baseline gap-2">
-            <div className="font-[600] text-[40px] leading-[48px] tracking-tight tabular-nums inline-block w-[110px] text-right">
+            <div className="font-[600] text-[32px] leading-[38px] tracking-tight tabular-nums inline-block w-[96px] text-right">
               {typeof value === "number"
                 ? new Intl.NumberFormat(undefined).format(value)
                 : value}

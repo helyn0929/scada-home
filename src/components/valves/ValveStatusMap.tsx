@@ -75,11 +75,13 @@ export default function ValveStatusMap({ valves }: ValveStatusMapProps) {
   }, [valves]);
 
   return (
-    <SvgRenderer
-      ref={containerRef}
-      raw={valveSvgRaw}
-      className="valve-svg-container"
-      onInsert={onSvgInsert}
-    />
+    <div className="w-[240px]">
+      <SvgRenderer
+        ref={containerRef}
+        raw={valveSvgRaw}
+        className="valve-svg-container"
+        onInsert={onSvgInsert}
+      />
+    </div>
   );
 }

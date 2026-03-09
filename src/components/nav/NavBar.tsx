@@ -24,11 +24,11 @@ export default function NavBar() {
 
   };
 
-    return (
-        // Floating NavBar container
-        <div className="fixed top-12 right-12  bg-white/15 backdrop-blur-md rounded-full px-8 py-8 flex flex-col items-center space-y-10 ">
-            {navItems.map((item,index) => (
-                <React.Fragment key={item.label}>
+  return (
+    // Floating NavBar container
+    <div className="fixed top-12 right-12 bg-white/15 backdrop-blur-md rounded-full px-8 py-8 flex flex-col items-center space-y-10 transform origin-top-right scale-50">
+      {navItems.map((item, index) => (
+        <React.Fragment key={item.label}>
 
       {/* icon */}
       <img
@@ -39,8 +39,8 @@ export default function NavBar() {
       />
 
 
-      </React.Fragment>
-    ))}
+        </React.Fragment>
+      ))}
     </div>
   );
 }

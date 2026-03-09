@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 56" fill="none">
+  <!-- Background track: semicircle arc (180°) -->
+  <path
+    id="gauge-track"
+    d="M 8 48 A 36 36 0 0 1 72 48"
+    stroke="rgba(255,255,255,0.25)"
+    stroke-width="6"
+    stroke-linecap="round"
+    fill="none"
+  />
+  <!-- Progress arc: same path, driven by stroke-dasharray/dashoffset (set via React) -->
+  <path
+    id="gauge-progress"
+    d="M 8 48 A 36 36 0 0 1 72 48"
+    stroke="#06E2F4"
+    stroke-width="6"
+    stroke-linecap="round"
+    fill="none"
+    stroke-dasharray="113.1"
+    stroke-dashoffset="113.1"
+  />
+  <!-- Center value text (content set via React) -->
+  <text
+    id="gauge-value"
+    x="40"
+    y="38"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    fill="#FFFFFF"
+    font-family="Inter, system-ui, sans-serif"
+    font-size="14"
+    font-weight="600"
+  >--</text>
+</svg>

@@ -4,6 +4,7 @@ import NavBar from "@/components/nav/NavBar"
 import ValveStatusMap from "@/components/valves/ValveStatusMap"
 import NoiseMonitoring from "@/components/noise/NoiseMonitoring"
 import TemperatureCard from "@/components/temperature/TemperatureCard"
+import GeneratorVibration from "@/components/vibration/GeneratorVibration"
 
 function format1Decimal(value: number | undefined | null) {
   if (value === undefined || value === null || Number.isNaN(value)) {
@@ -82,7 +83,7 @@ export default function HomeScreen() {
           <ValveStatusMap valves={data?.valves} />
 
           {/* Bottom monitoring row: Noise + Temperature */}
-          <div className="flex flex-row gap-4 items-start">
+          <div className="flex flex-row gap-4 items-stretch">
             <NoiseMonitoring
               indoorNoise={data?.noiseIndoor}
               outdoorNoise={data?.noiseOutdoor}
@@ -94,6 +95,7 @@ export default function HomeScreen() {
               tempControlPanel={data?.tempControlPanel}
               tempEnvironment={data?.tempEnvironment}
             />
+            <GeneratorVibration />
           </div>
         </div>
       </div>

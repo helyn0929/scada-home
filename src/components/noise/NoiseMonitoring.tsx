@@ -45,7 +45,7 @@ function NoiseChart({ indoor, outdoor }: NoiseChartProps) {
   return (
     <svg
       viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-      className="shrink-0 w-full max-w-[140px] aspect-[187/50]"
+      className="w-full max-w-[140px] max-h-full aspect-[187/50]"
       preserveAspectRatio="xMidYMid meet"
     >
       {/* Shared vertical baseline at x=0 for both bars */}
@@ -103,14 +103,14 @@ export default function NoiseMonitoring({
   const outdoorDisplay = formatNoise(outdoorNoise);
 
   return (
-    <div className="w-[240px] rounded-[20px] bg-[#D9D9D9]/15 px-4 py-3">
+    <div className="w-[240px] h-[158px] shrink-0 rounded-[20px] bg-[#D9D9D9]/15 px-4 py-3 flex flex-col overflow-hidden">
       {/* Topic bar (Rectangle 29 + label) */}
-      <div className="mb-3 w-full rounded-[9px] bg-[#D9D9D9]/20 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)] px-4 py-1.5 flex items-center">
-        <span className="font-semibold text-[15px] leading-[18px] text-white">
+      <div className="shrink-0 mb-3 w-full rounded-[9px] bg-[#D9D9D9]/20 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)] px-4 py-1.5 flex items-center">
+        <span className="font-semibold text-[15px] leading-[18px] text-white truncate">
           Noise Monitoring
         </span>
       </div>
-      <div className="flex flex-row items-center gap-2">
+      <div className="flex-1 min-h-0 flex flex-row items-center justify-center gap-2">
         {/* Labels column */}
         <div className="flex flex-col justify-between text-xs font-medium text-white tracking-wide">
           <span>INDOOR</span>
@@ -118,7 +118,7 @@ export default function NoiseMonitoring({
         </div>
 
         {/* Shared SVG chart with one baseline and two bars */}
-        <div className="flex-1 flex justify-center">
+        <div className="flex-1 min-w-0 flex justify-center items-center">
           <NoiseChart indoor={indoorNoise} outdoor={outdoorNoise} />
         </div>
 

@@ -33,4 +33,9 @@ export interface TelemetryData {
 
   // 🔹 閥件
   valves?: Valves;
+
+  // 🔹 Generator power (card: S, P, Q, P.F)
+  generatorApparentPowerS?: number; // kVA, -2000..+2000
+  generatorActivePowerP?: number;   // kW, -2000..+2000
+  generatorReactivePowerQ?: number; // kvar, -2000..+2000
 }

@@ -5,6 +5,7 @@ import ValveStatusMap from "@/components/valves/ValveStatusMap"
 import NoiseMonitoring from "@/components/noise/NoiseMonitoring"
 import TemperatureCard from "@/components/temperature/TemperatureCard"
 import GeneratorVibration from "@/components/vibration/GeneratorVibration"
+import GeneratorPower from "@/components/power/GeneratorPower"
 
 function format1Decimal(value: number | undefined | null) {
   if (value === undefined || value === null || Number.isNaN(value)) {
@@ -28,8 +29,9 @@ export default function HomeScreen() {
           <span className="text-red-500">Mega</span>
         </h1>
 
-        {/* Left-side stack: KPIs, Valve Status Overview, Noise Monitoring */}
-        <div className="flex flex-col gap-4 items-start">
+        {/* Main layout: KPIs, then Valve Status row with Generator Power, then monitoring row */}
+        <div className="flex flex-col gap-4 items-start w-full">
+          {/* KPI cards stack */}
           <KpiCard
             label="ACTIVE POWER"
             value={format1Decimal(data?.power_kw)} // display live data here
@@ -79,11 +81,18 @@ export default function HomeScreen() {
             }
           />
 
-          {/* Valve status overview stays in original position under KPIs */}
-          <ValveStatusMap valves={data?.valves} />
+          {/* Valve Status + Generator Power (top row) and monitoring row below in a 3-column grid */}
+          <div className="grid w-full gap-4 grid-cols-[auto_auto_minmax(380px,480px)] items-stretch">
+            {/* Row 1: Valve Status | (empty) | Generator Power */}
+            <ValveStatusMap valves={data?.valves} />
+            <div />
+            <GeneratorPower
+              apparentPowerS={data?.generatorApparentPowerS}
+              activePowerP={data?.generatorActivePowerP}
+              reactivePowerQ={data?.generatorReactivePowerQ}
+            />
 
-          {/* Bottom monitoring row: Noise + Temperature */}
-          <div className="flex flex-row gap-4 items-stretch">
+            {/* Row 2: Noise | Temperature | Generator Vibration */}
             <NoiseMonitoring
               indoorNoise={data?.noiseIndoor}
               outdoorNoise={data?.noiseOutdoor}

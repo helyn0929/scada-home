@@ -42,6 +42,10 @@ export function useLiveTelemetry(url: string) {
           dn1400D: { open: mainLineOpen },
           dn1350: { open: percent > 0, percent },
         },
+        // Generator power: -2000..+2000 (kVA, kW, kvar)
+        generatorApparentPowerS: -2000 + Math.random() * 4000,
+        generatorActivePowerP: -2000 + Math.random() * 4000,
+        generatorReactivePowerQ: -2000 + Math.random() * 4000,
       };
     }
 
@@ -92,7 +96,10 @@ export function useLiveTelemetry(url: string) {
             tempWindingW: temps.tempWindingW,
             tempControlPanel: temps.tempControlPanel,
             tempEnvironment: temps.tempEnvironment,
-            valves: json.valves, // expect backend to provide the `valves` structure
+            valves: json.valves,
+            generatorApparentPowerS: json.generatorApparentPowerS,
+            generatorActivePowerP: json.generatorActivePowerP,
+            generatorReactivePowerQ: json.generatorReactivePowerQ,
           });
         }
       } catch (err) {

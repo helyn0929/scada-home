@@ -123,7 +123,7 @@ export default function GeneratorPower({
       : (null as number | null);
 
   return (
-    <div className="flex h-[158px] w-full min-w-0 max-w-full shrink-0 flex-col overflow-hidden rounded-[20px] px-4 py-3">
+    <div className="inline-flex h-[158px] w-fit max-w-[480px] shrink-0 flex-col overflow-hidden rounded-[20px] px-3 py-3">
       {/* Title — background sized to text only */}
       <div className="mb-3 inline-flex w-fit shrink-0 items-center rounded-[9px] bg-[#D9D9D9]/20 px-4 py-1.5 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]">
         <span className="whitespace-nowrap font-semibold text-[15px] leading-[18px] text-white">
@@ -132,7 +132,7 @@ export default function GeneratorPower({
       </div>
 
       {/* Four gauges — even columns across full width (matches shared column with Generator Vibration) */}
-      <div className="grid min-h-0 w-full flex-1 grid-cols-4 gap-2 place-items-center">
+      <div className="grid min-h-0 w-max flex-1 grid-cols-4 gap-2 place-items-center">
         <PowerGaugeDial
           value={apparentPowerS}
           min={-2000}
@@ -162,7 +162,7 @@ export default function GeneratorPower({
           min={-1}
           max={1}
           label="P.F"
-          unit=""
+          unit=" "
           formatValue={(v) => v.toFixed(2)}
         />
       </div>

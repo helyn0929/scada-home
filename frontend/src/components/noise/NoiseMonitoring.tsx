@@ -105,7 +105,7 @@ export default function NoiseMonitoring({
   return (
     <div className="w-[240px] h-[158px] shrink-0 rounded-[20px] bg-[#D9D9D9]/15 px-4 py-3 flex flex-col overflow-hidden">
       {/* Topic bar (Rectangle 29 + label) */}
-      <div className="shrink-0 mb-3 w-full rounded-[9px] bg-[#D9D9D9]/20 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)] px-4 py-1.5 flex items-center">
+      <div className="mb-3 w-fit shrink-0 flex items-center rounded-[9px] bg-[#D9D9D9]/20 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)] px-4 py-1.5">
         <span className="font-semibold text-[15px] leading-[18px] text-white truncate">
           Noise Monitoring
         </span>

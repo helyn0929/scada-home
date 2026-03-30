@@ -84,7 +84,9 @@ export default function GeneratorVibration() {
   const chartHeight = 58;
   const left = 36;
   const bottom = 70;
-  const panelTop = 10;
+  // Keep the background/axes aligned to the actual chart plot area.
+  // pointsToPath maps y in [0..Y_MAX_MM_S] into [bottom - chartHeight .. bottom].
+  const panelTop = bottom - chartHeight; // 12
   const dePath = pointsToPath(dePoints, chartWidth, chartHeight, left, bottom);
   const ndePath = pointsToPath(ndePoints, chartWidth, chartHeight, left, bottom);
 
@@ -92,7 +94,7 @@ export default function GeneratorVibration() {
     <div className="inline-flex h-[158px] w-fit max-w-[480px] shrink-0 flex-col justify-self-start overflow-hidden rounded-[20px] bg-[#D9D9D9]/15 px-3 py-3">
       {/* Inner width = legend + chart; title bar matches that width */}
       <div className="flex w-max min-w-0 flex-col gap-3">
-        <div className="w-full shrink-0 rounded-[9px] bg-[#D9D9D9]/20 px-4 py-1.5 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]">
+        <div className="w-fit shrink-0 rounded-[9px] bg-[#D9D9D9]/20 px-4 py-1.5 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]">
           <span className="font-semibold text-[15px] leading-[18px] text-white">
             Generator Vibration
           </span>

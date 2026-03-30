@@ -89,39 +89,41 @@ export default function GeneratorVibration() {
   const ndePath = pointsToPath(ndePoints, chartWidth, chartHeight, left, bottom);
 
   return (
-    <div className="flex-1 min-w-[380px] w-full max-w-[480px] h-[158px] rounded-[20px] bg-[#D9D9D9]/15 px-4 py-3 flex flex-col overflow-hidden">
-      {/* Title bar — same style as Temperature / Noise */}
-      <div className="shrink-0 mb-3 w-full rounded-[9px] bg-[#D9D9D9]/20 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)] px-4 py-1.5 flex items-center">
-        <span className="font-semibold text-[15px] leading-[18px] text-white">
-          Generator Vibration
-        </span>
-      </div>
+    <div className="inline-flex h-[158px] w-fit max-w-[480px] shrink-0 flex-col justify-self-start overflow-hidden rounded-[20px] bg-[#D9D9D9]/15 px-3 py-3">
+      {/* Inner width = legend + chart; title bar matches that width */}
+      <div className="flex w-max min-w-0 flex-col gap-3">
+        <div className="w-full shrink-0 rounded-[9px] bg-[#D9D9D9]/20 px-4 py-1.5 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]">
+          <span className="font-semibold text-[15px] leading-[18px] text-white">
+            Generator Vibration
+          </span>
+        </div>
 
-      {/* Chart area: legend on left, chart scales to fit */}
-      <div className="flex-1 min-h-0 flex flex-row items-stretch gap-2">
+      {/* Chart area: legend + fixed-width SVG so card edge matches line chart edge */}
+      <div className="flex min-h-0 w-fit flex-row items-stretch gap-1">
         {/* DE / NDE stacked on left */}
-        <div className="shrink-0 flex flex-col justify-center gap-2 py-1">
+        <div className="flex shrink-0 flex-col justify-center gap-2 py-0.5">
           <div className="flex items-center gap-1.5">
             <div
-              className="w-3 h-0.5 rounded-full shrink-0"
+              className="h-0.5 w-3 shrink-0 rounded-full"
               style={{ backgroundColor: DE_COLOR }}
             />
             <span className="text-[11px] font-semibold text-white">DE</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div
-              className="w-3 h-0.5 rounded-full shrink-0"
+              className="h-0.5 w-3 shrink-0 rounded-full"
               style={{ backgroundColor: NDE_COLOR }}
             />
             <span className="text-[11px] font-semibold text-white">NDE</span>
           </div>
         </div>
-        <div className="flex-1 min-w-0 min-h-0 flex items-center">
-        <svg
-          viewBox="0 0 320 100"
-          className="w-full h-full block"
-          preserveAspectRatio="xMidYMid meet"
-        >
+        {/* SVG width ≈ 80% of 320px viewBox width — chart fills wrapper; no extra gap past plot */}
+        <div className="flex h-full w-[256px] shrink-0 flex-col">
+          <svg
+            viewBox="0 0 320 100"
+            className="block h-full w-full"
+            preserveAspectRatio="xMidYMid meet"
+          >
           {/* Inner panel background — spans chart area, fits card */}
           <rect
             x={32}
@@ -186,8 +188,9 @@ export default function GeneratorVibration() {
               style={{ transition: "none" }}
             />
           )}
-        </svg>
+          </svg>
         </div>
+      </div>
       </div>
     </div>
   );

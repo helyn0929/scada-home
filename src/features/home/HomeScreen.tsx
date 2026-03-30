@@ -29,7 +29,7 @@ export default function HomeScreen() {
           <span className="text-red-500">Mega</span>
         </h1>
 
-        {/* Main layout: KPIs, then Valve Status row with Generator Power, then monitoring row */}
+        {/* Main layout: KPIs, then Valve + Power row and Noise | Temperature | Vibration row */}
         <div className="flex flex-col gap-4 items-start w-full">
           {/* KPI cards stack */}
           <KpiCard
@@ -81,9 +81,8 @@ export default function HomeScreen() {
             }
           />
 
-          {/* Valve Status + Generator Power (top row) and monitoring row below in a 3-column grid */}
-          <div className="grid w-full gap-4 grid-cols-[auto_auto_minmax(380px,480px)] items-stretch">
-            {/* Row 1: Valve Status | (empty) | Generator Power */}
+          {/* Row 1: Valve | spacer | Power. Row 2: Noise | Temperature | Vibration (tight horizontal band). */}
+          <div className="grid w-full gap-3 grid-cols-[auto_auto_minmax(380px,480px)] items-stretch">
             <ValveStatusMap valves={data?.valves} />
             <div />
             <GeneratorPower
@@ -92,7 +91,6 @@ export default function HomeScreen() {
               reactivePowerQ={data?.generatorReactivePowerQ}
             />
 
-            {/* Row 2: Noise | Temperature | Generator Vibration */}
             <NoiseMonitoring
               indoorNoise={data?.noiseIndoor}
               outdoorNoise={data?.noiseOutdoor}

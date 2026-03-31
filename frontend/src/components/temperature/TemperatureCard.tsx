@@ -113,7 +113,7 @@ export default function TemperatureCard({
   tempEnvironment,
 }: TemperatureCardProps) {
   return (
-    <div className="flex-1 min-w-[380px] w-full max-w-[480px] h-[158px] rounded-[20px] bg-[#D9D9D9]/15 px-4 py-3 flex flex-col">
+    <div className="h-[158px] w-fit max-w-[480px] shrink-0 rounded-[20px] bg-[#D9D9D9]/15 px-4 py-3 flex flex-col">
       {/* Topic bar: Rectangle 28 style */}
       <div className="mb-3 w-fit shrink-0 flex items-center rounded-[9px] bg-[#D9D9D9]/20 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)] px-4 py-1.5">
         <span className="font-semibold text-[15px] leading-[18px] text-white">
@@ -122,7 +122,7 @@ export default function TemperatureCard({
       </div>
 
       {/* Content: 3-phase winding (left) | Control Panel & Environment (right) */}
-      <div className="flex flex-row items-start justify-between gap-4">
+      <div className="flex flex-row items-start justify-start gap-4">
         {/* Left: 3-phase winding — label above, U/V/W gauges, labels below */}
         <div className="flex flex-col items-center gap-1">
           <span className="text-[11px] leading-[14px] font-semibold text-white whitespace-nowrap">

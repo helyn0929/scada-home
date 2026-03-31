@@ -22,7 +22,9 @@ export default function HomeScreen() {
       {/* Floating NavBar */}
       <NavBar />
 
-      <div className="min-h-dvh w-dvw bg-black text-white p-6 flex flex-col gap-6 items-start">
+      {/* Horizontal scroll when viewport is narrower than fixed layout — layout does not shrink */}
+      <div className="min-h-dvh overflow-x-auto overflow-y-auto bg-black text-white">
+        <div className="p-6 flex flex-col gap-6 items-start shrink-0 w-max">
         {/* Title */}
         <h1 className="text-4xl font-bold">
           <span className="text-blue-500">AES</span>{" "}
@@ -30,7 +32,7 @@ export default function HomeScreen() {
         </h1>
 
         {/* Main layout: KPIs, then Valve + Power row and Noise | Temperature | Vibration row */}
-        <div className="flex flex-col gap-4 items-start w-full">
+        <div className="flex flex-col gap-4 items-start w-full max-w-full">
           {/* KPI cards stack */}
           <KpiCard
             label="ACTIVE POWER"
@@ -81,8 +83,8 @@ export default function HomeScreen() {
             }
           />
 
-          {/* Row 1: Valve | spacer | Power. Row 2: Noise | Temperature | Vibration (tight horizontal band). */}
-          <div className="grid w-full gap-3 grid-cols-[auto_auto_minmax(380px,480px)] items-stretch">
+          {/* Row 1: Valve | spacer | Power. Row 2: Noise | Temperature | Vibration — content-sized columns (stable layout, less empty space). */}
+          <div className="grid w-max shrink-0 gap-3 grid-cols-[240px_max-content_max-content] items-stretch justify-items-stretch">
             <ValveStatusMap valves={data?.valves} />
             <div />
             <GeneratorPower
@@ -104,6 +106,7 @@ export default function HomeScreen() {
             />
             <GeneratorVibration />
           </div>
+        </div>
         </div>
       </div>
     </div>

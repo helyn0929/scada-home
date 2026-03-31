@@ -31,6 +31,7 @@ function PowerGaugeDial({
   max,
   label,
   unit,
+  unitClassName,
   formatValue,
 }: {
   value: number | undefined | null;
@@ -38,6 +39,8 @@ function PowerGaugeDial({
   max: number;
   label: string;
   unit: string;
+  /** Extra classes for the unit line (e.g. invisible placeholder so P.F aligns with kVA/kW/kvar). */
+  unitClassName?: string;
   formatValue: (v: number) => string;
 }) {
   const id = React.useId().replace(/:/g, "");
@@ -102,7 +105,11 @@ function PowerGaugeDial({
         </svg>
       </div>
       {unit ? (
-        <span className="text-[10px] font-normal text-white/70 tabular-nums">
+        <span
+          className={`text-[10px] font-normal tabular-nums min-h-[14px] leading-[14px] text-white/70 ${
+            unitClassName ?? ""
+          }`}
+        >
           {unit}
         </span>
       ) : null}
@@ -163,6 +170,7 @@ export default function GeneratorPower({
           max={1}
           label="P.F"
           unit=" "
+          unitClassName="text-transparent select-none pointer-events-none"
           formatValue={(v) => v.toFixed(2)}
         />
       </div>

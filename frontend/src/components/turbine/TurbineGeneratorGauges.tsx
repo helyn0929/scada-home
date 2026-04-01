@@ -146,7 +146,19 @@ function TurbineGaugeDial({
   );
 }
 
-export default function TurbineGeneratorGauges() {
+interface TurbineGeneratorGaugesProps {
+  waterFlow?: number;
+  guideVanePct?: number;
+  genSpeedRpm?: number;
+  genSpeedPct?: number;
+}
+
+export default function TurbineGeneratorGauges({
+  waterFlow,
+  guideVanePct,
+  genSpeedRpm,
+  genSpeedPct,
+}: TurbineGeneratorGaugesProps) {
   const [waterCms, setWaterCms] = useState(1.2);
   const [wicketPct, setWicketPct] = useState(42);
   const [speedRpm, setSpeedRpm] = useState(720);
@@ -154,14 +166,13 @@ export default function TurbineGeneratorGauges() {
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      setWaterCms((v) => bump(v, 0, 3, 0.35));
-      /* Slightly wider mock span so >100% / <0% alarms can appear; live data replaces this */
-      setWicketPct((v) => bump(v, -4, 104, 12));
-      setSpeedRpm((v) => bump(v, 0, 1200, 80));
-      setSpeedPct((v) => bump(v, 0, 200, 15));
+      setWaterCms((v) => waterFlow != null ? waterFlow : bump(v, 0, 3, 0.35));
+      setWicketPct((v) => guideVanePct != null ? guideVanePct : bump(v, -4, 104, 12));
+      setSpeedRpm((v) => genSpeedRpm != null ? genSpeedRpm : bump(v, 0, 1200, 80));
+      setSpeedPct((v) => genSpeedPct != null ? genSpeedPct : bump(v, 0, 200, 15));
     }, UPDATE_MS);
     return () => window.clearInterval(id);
-  }, []);
+  }, [waterFlow, guideVanePct, genSpeedRpm, genSpeedPct]);
 
   const pairClass =
     "grid h-full min-h-0 min-w-0 flex-1 grid-cols-2 gap-2 place-items-center px-3 py-1 rounded-[14px] bg-[#D9D9D9]/20 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]";

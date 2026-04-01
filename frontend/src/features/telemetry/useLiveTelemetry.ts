@@ -84,23 +84,7 @@ export function useLiveTelemetry(url: string) {
             json.tempEnvironment != null;
           const temps = hasTemps ? json : generateMockTemps();
 
-          setData({
-            power_kw: json.power_kw,
-            energy_kwh: json.energy_kwh,
-            discharge_cms: json.discharge_cms,
-            capacity_factor: json.capacity_factor,
-            noiseIndoor: json.noiseIndoor,
-            noiseOutdoor: json.noiseOutdoor,
-            tempWindingU: temps.tempWindingU,
-            tempWindingV: temps.tempWindingV,
-            tempWindingW: temps.tempWindingW,
-            tempControlPanel: temps.tempControlPanel,
-            tempEnvironment: temps.tempEnvironment,
-            valves: json.valves,
-            generatorApparentPowerS: json.generatorApparentPowerS,
-            generatorActivePowerP: json.generatorActivePowerP,
-            generatorReactivePowerQ: json.generatorReactivePowerQ,
-          });
+          setData({ ...json, ...temps });
         }
       } catch (err) {
         console.error("Error fetching telemetry data:", err);

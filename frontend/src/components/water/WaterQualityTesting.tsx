@@ -119,21 +119,27 @@ export function WaterQualityTestingTitle() {
   );
 }
 
-type WaterQualityTestingProps = { hideTitle?: boolean };
+type WaterQualityTestingProps = {
+  hideTitle?: boolean;
+  waterQualityIn?: number;
+  waterQualityOut?: number;
+};
 
 export default function WaterQualityTesting({
   hideTitle = false,
+  waterQualityIn,
+  waterQualityOut,
 }: WaterQualityTestingProps) {
   const [ppmBeforeDn900, setPpmBeforeDn900] = useState(3.8);
   const [ppmAfterDn1400d, setPpmAfterDn1400d] = useState(2.4);
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      setPpmBeforeDn900((v) => bump(v, 0.35));
-      setPpmAfterDn1400d((v) => bump(v, 0.3));
+      setPpmBeforeDn900((v) => waterQualityIn != null ? waterQualityIn : bump(v, 0.35));
+      setPpmAfterDn1400d((v) => waterQualityOut != null ? waterQualityOut : bump(v, 0.3));
     }, UPDATE_MS);
     return () => window.clearInterval(id);
-  }, []);
+  }, [waterQualityIn, waterQualityOut]);
 
   return (
     <div

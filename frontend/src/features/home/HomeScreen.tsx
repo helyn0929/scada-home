@@ -52,7 +52,12 @@ export default function HomeScreen() {
                 />
               }
             />
-            <TurbineGeneratorGauges />
+            <TurbineGeneratorGauges
+              waterFlow={data?.discharge_cms}
+              guideVanePct={data?.guideVanePct}
+              genSpeedRpm={data?.genSpeedRpm}
+              genSpeedPct={data?.genSpeedPct}
+            />
           </div>
           <div className="flex flex-col gap-4">
             <KpiCard
@@ -102,11 +107,19 @@ export default function HomeScreen() {
             <div className="row-span-2 row-start-1 col-start-2 flex h-full min-h-0 w-max flex-row flex-nowrap gap-3">
               <div className="flex h-full min-h-0 w-[240px] shrink-0 flex-col justify-end gap-3">
                 <PressureDN900Title />
-                <PressureDN900 hideTitle />
+                <PressureDN900
+                  hideTitle
+                  pressureBefore={data?.pressureBeforeDn900}
+                  pressureAfter={data?.pressureAfterDn900}
+                />
               </div>
               <div className="flex h-full min-h-0 w-[240px] shrink-0 flex-col justify-end gap-3">
                 <WaterQualityTestingTitle />
-                <WaterQualityTesting hideTitle />
+                <WaterQualityTesting
+                  hideTitle
+                  waterQualityIn={data?.waterQualityIn}
+                  waterQualityOut={data?.waterQualityOut}
+                />
               </div>
             </div>
 
@@ -136,7 +149,10 @@ export default function HomeScreen() {
               />
             </div>
             <div className="col-start-3 row-start-3">
-              <GeneratorVibration />
+              <GeneratorVibration
+                vibrationDE={data?.vibrationDE}
+                vibrationNDE={data?.vibrationNDE}
+              />
             </div>
           </div>
         </div>

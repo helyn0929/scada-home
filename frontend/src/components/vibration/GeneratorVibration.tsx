@@ -33,7 +33,12 @@ function pointsToPath(
   return d;
 }
 
-export default function GeneratorVibration() {
+interface GeneratorVibrationProps {
+  vibrationDE?: number;
+  vibrationNDE?: number;
+}
+
+export default function GeneratorVibration({ vibrationDE, vibrationNDE }: GeneratorVibrationProps) {
   const [dePoints, setDePoints] = useState<Array<{ x: number; y: number }>>([]);
   const [ndePoints, setNdePoints] = useState<Array<{ x: number; y: number }>>([]);
   const deLast = useRef(1.4);
@@ -61,7 +66,9 @@ export default function GeneratorVibration() {
     if (dePoints.length === 0) return;
     const t = setInterval(() => {
       setDePoints((prev) => {
-        const nextY = nextVibration(deLast.current, 1.4, 0.6);
+        const nextY = vibrationDE != null
+          ? nextVibration(vibrationDE, vibrationDE, 0.15)
+          : nextVibration(deLast.current, 1.4, 0.6);
         deLast.current = nextY;
         const next = [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }].map(
           (p, i) => ({ ...p, x: i })
@@ -69,7 +76,9 @@ export default function GeneratorVibration() {
         return next;
       });
       setNdePoints((prev) => {
-        const nextY = nextVibration(ndeLast.current, 1.8, 0.5);
+        const nextY = vibrationNDE != null
+          ? nextVibration(vibrationNDE, vibrationNDE, 0.15)
+          : nextVibration(ndeLast.current, 1.8, 0.5);
         ndeLast.current = nextY;
         const next = [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }].map(
           (p, i) => ({ ...p, x: i })
@@ -78,7 +87,7 @@ export default function GeneratorVibration() {
       });
     }, UPDATE_MS);
     return () => clearInterval(t);
-  }, [dePoints.length]);
+  }, [dePoints.length, vibrationDE, vibrationNDE]);
 
   const chartWidth = 268;
   const chartHeight = 58;
@@ -110,6 +119,9 @@ export default function GeneratorVibration() {
               style={{ backgroundColor: DE_COLOR }}
             />
             <span className="text-[11px] font-semibold text-white">DE</span>
+            <span className="w-[32px] text-right text-[11px] font-semibold tabular-nums" style={{ color: DE_COLOR }}>
+              {deLast.current.toFixed(2)}
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             <div
@@ -117,6 +129,9 @@ export default function GeneratorVibration() {
               style={{ backgroundColor: NDE_COLOR }}
             />
             <span className="text-[11px] font-semibold text-white">NDE</span>
+            <span className="w-[32px] text-right text-[11px] font-semibold tabular-nums" style={{ color: NDE_COLOR }}>
+              {ndeLast.current.toFixed(2)}
+            </span>
           </div>
         </div>
         {/* SVG width ≈ 80% of 320px viewBox width — chart fills wrapper; no extra gap past plot */}

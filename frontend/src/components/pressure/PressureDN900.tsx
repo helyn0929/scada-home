@@ -118,21 +118,27 @@ export function PressureDN900Title() {
   );
 }
 
-type PressureDN900Props = { hideTitle?: boolean };
+type PressureDN900Props = {
+  hideTitle?: boolean;
+  pressureBefore?: number;
+  pressureAfter?: number;
+};
 
 export default function PressureDN900({
   hideTitle = false,
+  pressureBefore,
+  pressureAfter,
 }: PressureDN900Props) {
   const [pressureBeforeDn900, setPressureBeforeDn900] = useState(5.2);
   const [pressureAfterDn900, setPressureAfterDn900] = useState(4.6);
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      setPressureBeforeDn900((v) => bump(v, 0.45));
-      setPressureAfterDn900((v) => bump(v, 0.4));
+      setPressureBeforeDn900((v) => pressureBefore != null ? pressureBefore : bump(v, 0.45));
+      setPressureAfterDn900((v) => pressureAfter != null ? pressureAfter : bump(v, 0.4));
     }, UPDATE_MS);
     return () => window.clearInterval(id);
-  }, []);
+  }, [pressureBefore, pressureAfter]);
 
   return (
     <div

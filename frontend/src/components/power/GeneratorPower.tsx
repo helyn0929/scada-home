@@ -1,6 +1,7 @@
 import React from "react";
 
 const GAUGE_COLOR_NORMAL = "#06E2F4";
+const GAUGE_COLOR_OVERFLOW = "#FE0C0C";
 
 type GeneratorPowerProps = {
   /** Apparent power, kVA, -2000 to +2000 */
@@ -31,7 +32,7 @@ function PowerGaugeDial({
   max,
   label,
   unit,
-  unitClassName,
+  unitInvisible,
   formatValue,
 }: {
   value: number | undefined | null;
@@ -39,16 +40,18 @@ function PowerGaugeDial({
   max: number;
   label: string;
   unit: string;
-  /** Extra classes for the unit line (e.g. invisible placeholder so P.F aligns with kVA/kW/kvar). */
-  unitClassName?: string;
+  /** Renders unit inside gauge with transparent fill (e.g. P.F placeholder). */
+  unitInvisible?: boolean;
   formatValue: (v: number) => string;
 }) {
   const id = React.useId().replace(/:/g, "");
   const hasValue =
     value !== undefined && value !== null && !Number.isNaN(value);
-  const clamped = hasValue ? clamp(value!, min, max) : null;
+  const raw = hasValue ? (value as number) : null;
+  const clamped = hasValue ? clamp(raw!, min, max) : null;
+  const outOfRange = hasValue && (raw! < min || raw! > max);
   const display =
-    clamped !== null ? formatValue(clamped) : "--";
+    !hasValue ? "--" : outOfRange ? formatValue(raw!) : formatValue(clamped!);
 
   const t =
     clamped !== null ? (clamped - min) / (max - min) : 0;
@@ -60,11 +63,17 @@ function PowerGaugeDial({
   const strokeDasharray = `${progressLength} ${gapLength}`;
   const strokeDashoffset = -GAUGE_ARC_START;
 
+  const strokeColor = outOfRange ? GAUGE_COLOR_OVERFLOW : GAUGE_COLOR_NORMAL;
+  const valueFill = outOfRange ? GAUGE_COLOR_OVERFLOW : "#FFFFFF";
+  const unitText = unitInvisible ? "\u00B0" : unit;
+  const unitFill = unitInvisible
+    ? "rgba(255,255,255,0)"
+    : outOfRange
+      ? "rgba(254,12,12,0.85)"
+      : "rgba(255,255,255,0.72)";
+
   return (
     <div className="flex shrink-0 flex-col items-center gap-1">
-      <span className="text-[11px] font-semibold leading-[14px] text-white">
-        {label}
-      </span>
       <div className="flex h-[46px] w-[58px] shrink-0 items-center justify-center">
         <svg
           viewBox={GAUGE_VIEWBOX}
@@ -80,7 +89,7 @@ function PowerGaugeDial({
           <path
             d={GAUGE_PATH}
             fill="none"
-            stroke={GAUGE_COLOR_NORMAL}
+            stroke={strokeColor}
             strokeWidth={10}
             strokeLinecap="butt"
             strokeLinejoin="round"
@@ -92,36 +101,63 @@ function PowerGaugeDial({
           />
           <text
             x="29"
-            y="26"
+            y="22"
             textAnchor="middle"
             dominantBaseline="middle"
-            fill="#FFFFFF"
+            fill={valueFill}
             fontFamily="Inter, system-ui, sans-serif"
             fontSize="12"
             fontWeight={600}
+            style={{ fontVariantNumeric: "tabular-nums" }}
           >
             {display}
           </text>
+          <text
+            x="29"
+            y="32"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={unitFill}
+            fontFamily="Inter, system-ui, sans-serif"
+            fontSize="10"
+            fontWeight={500}
+          >
+            {unitText}
+          </text>
         </svg>
       </div>
-      {unit ? (
-        <span
-          className={`text-[10px] font-normal tabular-nums min-h-[14px] leading-[14px] text-white/70 ${
-            unitClassName ?? ""
-          }`}
-        >
-          {unit}
+      <span className="flex flex-col items-center gap-0.5">
+        <span className="text-[11px] font-semibold leading-[14px] text-white">
+          {label}
         </span>
-      ) : null}
+        {outOfRange ? (
+          <span className="text-[8px] font-bold leading-none text-[#FE0C0C]">
+            {raw! > max ? "HI" : "LO"}
+          </span>
+        ) : null}
+      </span>
     </div>
   );
 }
+
+export function GeneratorPowerTitle() {
+  return (
+    <div className="inline-flex w-fit shrink-0 items-center rounded-[9px] bg-[#D9D9D9]/20 px-4 py-1.5 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]">
+      <span className="whitespace-nowrap font-semibold text-[15px] leading-[18px] text-white">
+        Generator Power
+      </span>
+    </div>
+  );
+}
+
+type GeneratorPowerFullProps = GeneratorPowerProps & { hideTitle?: boolean };
 
 export default function GeneratorPower({
   apparentPowerS,
   activePowerP,
   reactivePowerQ,
-}: GeneratorPowerProps) {
+  hideTitle = false,
+}: GeneratorPowerFullProps) {
   const s = apparentPowerS ?? 0;
   const p = activePowerP ?? 0;
   const pf =
@@ -130,16 +166,21 @@ export default function GeneratorPower({
       : (null as number | null);
 
   return (
-    <div className="inline-flex h-[158px] w-fit max-w-[480px] shrink-0 flex-col overflow-hidden rounded-[20px] px-3 py-3">
-      {/* Title — background sized to text only */}
-      <div className="mb-3 inline-flex w-fit shrink-0 items-center rounded-[9px] bg-[#D9D9D9]/20 px-4 py-1.5 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]">
-        <span className="whitespace-nowrap font-semibold text-[15px] leading-[18px] text-white">
-          Generator Power
-        </span>
-      </div>
+    <div
+      className={`flex w-full min-w-0 max-w-[480px] shrink-0 flex-col overflow-hidden rounded-[20px] px-3 ${
+        hideTitle
+          ? "min-h-[96px] pb-3 pt-0"
+          : "h-[158px] py-3"
+      }`}
+    >
+      {!hideTitle ? (
+        <div className="mb-1 shrink-0">
+          <GeneratorPowerTitle />
+        </div>
+      ) : null}
 
-      {/* Four gauges — even columns across full width (matches shared column with Generator Vibration) */}
-      <div className="grid min-h-0 w-max flex-1 grid-cols-4 gap-2 place-items-center">
+      {/* Four gauges — equal columns across full row width (aligns with Generator Vibration column) */}
+      <div className="grid min-h-0 w-full flex-1 grid-cols-4 content-start justify-items-center gap-x-1 gap-y-0">
         <PowerGaugeDial
           value={apparentPowerS}
           min={-2000}
@@ -169,8 +210,8 @@ export default function GeneratorPower({
           min={-1}
           max={1}
           label="P.F"
-          unit=" "
-          unitClassName="text-transparent select-none pointer-events-none"
+          unit=""
+          unitInvisible
           formatValue={(v) => v.toFixed(2)}
         />
       </div>

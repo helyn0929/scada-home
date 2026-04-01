@@ -8,10 +8,13 @@ type TemperatureCardProps = {
   tempEnvironment: number | undefined | null;
 };
 
-// Clamp temperature to 0–200 °C
+const TEMP_DISPLAY_MIN = 0;
+const TEMP_DISPLAY_MAX = 200;
+
+// Clamp temperature to 0–200 °C for arc / scale
 function clampTemp(value: number | undefined | null): number {
   if (value === undefined || value === null || Number.isNaN(value)) return 0;
-  return Math.max(0, Math.min(200, value));
+  return Math.max(TEMP_DISPLAY_MIN, Math.min(TEMP_DISPLAY_MAX, value));
 }
 
 function formatTemp(value: number | undefined | null): string {
@@ -43,16 +46,26 @@ const GAUGE_ARC_LENGTH = 50;
 
 function GaugeDial({ value, warningThreshold }: GaugeDialProps) {
   const id = React.useId().replace(/:/g, "");
+  const rawOk =
+    value !== undefined && value !== null && !Number.isNaN(value);
+  const rawNum = rawOk ? (value as number) : null;
   const clamped = clampTemp(value);
-  const display = formatTemp(value);
+  const outOfRange =
+    rawNum !== null &&
+    (rawNum < TEMP_DISPLAY_MIN || rawNum > TEMP_DISPLAY_MAX);
+  const display =
+    !rawOk ? "--" : outOfRange ? rawNum.toFixed(1) : formatTemp(value);
   const isWarning =
     warningThreshold !== undefined && clamped >= warningThreshold;
-  const progressStroke = isWarning ? GAUGE_COLOR_WARNING : GAUGE_COLOR_NORMAL;
+  const progressStroke =
+    outOfRange || isWarning ? GAUGE_COLOR_WARNING : GAUGE_COLOR_NORMAL;
+  const valueFill =
+    outOfRange || isWarning ? GAUGE_COLOR_WARNING : "#FFFFFF";
 
   // Map 0–200°C to 0–GAUGE_ARC_LENGTH so fill runs exactly bottom-left → bottom-right.
   const progressLength = Math.min(
     GAUGE_ARC_LENGTH,
-    (clamped / 200) * GAUGE_ARC_LENGTH
+    (clamped / TEMP_DISPLAY_MAX) * GAUGE_ARC_LENGTH
   );
   const gapLength = GAUGE_PATH_LENGTH - progressLength;
   const strokeDasharray = `${progressLength} ${gapLength}`;
@@ -73,7 +86,7 @@ function GaugeDial({ value, warningThreshold }: GaugeDialProps) {
         </defs>
         {/* Track: dome background */}
         <path d={GAUGE_PATH} fill="rgba(255,255,255,0.35)" />
-        {/* Progress: bottom-left → bottom-right; red when value >= warningThreshold (e.g. 115 for U/V/W) */}
+        {/* Progress: red when out of instrument range or winding warning */}
         <path
           d={GAUGE_PATH}
           fill="none"
@@ -87,19 +100,33 @@ function GaugeDial({ value, warningThreshold }: GaugeDialProps) {
           style={{ transition: "none" }}
           clipPath={`url(#gauge-mask-${id})`}
         />
-        {/* Center value */}
+        {/* Center value — raw reading when outside 0–200 °C */}
         <text
           x="29"
-          y="26"
+          y="24"
           textAnchor="middle"
           dominantBaseline="middle"
-          fill="#FFFFFF"
+          fill={valueFill}
           fontFamily="Inter, system-ui, sans-serif"
           fontSize="12"
           fontWeight={600}
         >
           {display}
         </text>
+        {outOfRange ? (
+          <text
+            x="29"
+            y="34"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={GAUGE_COLOR_WARNING}
+            fontFamily="Inter, system-ui, sans-serif"
+            fontSize="7"
+            fontWeight={700}
+          >
+            {rawNum! > TEMP_DISPLAY_MAX ? "HI" : "LO"}
+          </text>
+        ) : null}
       </svg>
     </div>
   );
@@ -113,49 +140,53 @@ export default function TemperatureCard({
   tempEnvironment,
 }: TemperatureCardProps) {
   return (
-    <div className="h-[158px] w-fit max-w-[480px] shrink-0 rounded-[20px] bg-[#D9D9D9]/15 px-4 py-3 flex flex-col">
+    <div className="h-[158px] w-[480px] min-w-[480px] max-w-[480px] shrink-0 rounded-[20px] bg-[#D9D9D9]/15 px-4 py-3 flex flex-col">
       {/* Topic bar: Rectangle 28 style */}
-      <div className="mb-3 w-fit shrink-0 flex items-center rounded-[9px] bg-[#D9D9D9]/20 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)] px-4 py-1.5">
+      <div className="mb-1 w-fit shrink-0 flex items-center rounded-[9px] bg-[#D9D9D9]/20 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)] px-4 py-1.5">
         <span className="font-semibold text-[15px] leading-[18px] text-white">
           Temperature
         </span>
       </div>
 
-      {/* Content: 3-phase winding (left) | Control Panel & Environment (right) */}
-      <div className="flex flex-row items-start justify-start gap-4">
-        {/* Left: 3-phase winding — label above, U/V/W gauges, labels below */}
-        <div className="flex flex-col items-center gap-1">
-          <span className="text-[11px] leading-[14px] font-semibold text-white whitespace-nowrap">
+      {/* Content: winding (left) | panel + environment (right); gauges use full width of each band */}
+      <div className="flex min-h-0 w-full flex-1 flex-row items-start gap-4">
+        {/* Left: 3-phase winding — equal columns across section width */}
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="text-center text-[11px] font-semibold leading-[14px] text-white whitespace-nowrap">
             3-phase winding
           </span>
-          <div className="h-px w-full border-t-2 border-white/60 mix-blend-overlay mb-0.5" />
-          <div className="flex gap-2">
+          <div className="mb-0.5 h-px w-full border-t-2 border-white/60 mix-blend-overlay" />
+          <div className="grid w-full grid-cols-3 justify-items-center gap-x-1">
             <GaugeDial value={tempWindingU} warningThreshold={WINDING_WARNING_THRESHOLD} />
             <GaugeDial value={tempWindingV} warningThreshold={WINDING_WARNING_THRESHOLD} />
             <GaugeDial value={tempWindingW} warningThreshold={WINDING_WARNING_THRESHOLD} />
           </div>
-          <div className="flex gap-2 mt-0.5 text-[11px] leading-[14px] font-semibold text-white">
-            <span className="w-[58px] text-center">U</span>
-            <span className="w-[58px] text-center">V</span>
-            <span className="w-[58px] text-center">W</span>
+          <div className="mt-0.5 grid w-full grid-cols-3 justify-items-center gap-x-1 text-[11px] font-semibold leading-[14px] text-white">
+            <span className="text-center">U</span>
+            <span className="text-center">V</span>
+            <span className="text-center">W</span>
           </div>
         </div>
 
-        {/* Right: Control Panel and Environment — each label above its gauge */}
-        <div className="flex gap-4">
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-[11px] leading-[14px] font-semibold text-white whitespace-nowrap">
+        {/* Right: Control panel & Environment — equal halves across section width */}
+        <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="text-center text-[11px] font-semibold leading-[14px] text-white whitespace-nowrap">
               Control panel
             </span>
-            <div className="h-px w-full border-t-2 border-white/60 mix-blend-overlay mb-0.5" />
-            <GaugeDial value={tempControlPanel} />
+            <div className="mb-0.5 h-px w-full border-t-2 border-white/60 mix-blend-overlay" />
+            <div className="flex justify-center">
+              <GaugeDial value={tempControlPanel} />
+            </div>
           </div>
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-[11px] leading-[14px] font-semibold text-white whitespace-nowrap">
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="text-center text-[11px] font-semibold leading-[14px] text-white whitespace-nowrap">
               Environment
             </span>
-            <div className="h-px w-full border-t-2 border-white/60 mix-blend-overlay mb-0.5" />
-            <GaugeDial value={tempEnvironment} />
+            <div className="mb-0.5 h-px w-full border-t-2 border-white/60 mix-blend-overlay" />
+            <div className="flex justify-center">
+              <GaugeDial value={tempEnvironment} />
+            </div>
           </div>
         </div>
       </div>

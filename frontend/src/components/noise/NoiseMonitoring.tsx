@@ -16,16 +16,30 @@ function formatNoise(value: number | undefined | null): string {
   return clamped.toFixed(0);
 }
 
+const NOISE_DB_MIN = 0;
+const NOISE_DB_MAX = 100;
+
+function noiseOutOfRange(value: number | undefined | null): boolean {
+  if (value === undefined || value === null || Number.isNaN(value)) return false;
+  return value < NOISE_DB_MIN || value > NOISE_DB_MAX;
+}
+
+function noiseDisplayText(value: number | undefined | null): string {
+  if (value === undefined || value === null || Number.isNaN(value)) return "--";
+  if (noiseOutOfRange(value)) return Number(value).toFixed(0);
+  return formatNoise(value);
+}
+
 /* Single SVG chart:
-   - One vertical white baseline (Line 2) at x=0, spanning full height
-   - Two Rectangle 30 bars (187×18 #D9D9D9) starting from that baseline
-   - Cyan fills proportional to indoor / outdoor noise
+   - One vertical white baseline at x=0, full height
+   - Two gray tracks + cyan fills (BAR_WIDTH×BAR_HEIGHT); indoor / outdoor
 */
-const BAR_WIDTH = 187;
+/** Wider track uses middle column; sides get equal `1fr` so the block sits centered in the card */
+const BAR_WIDTH = 176;
 const BAR_HEIGHT = 18;
-const BAR_GAP = 8;
-const TOP_MARGIN = 4;
-const BOTTOM_MARGIN = 4;
+const BAR_GAP = 18;
+const TOP_MARGIN = 5;
+const BOTTOM_MARGIN = 5;
 const BAR1_Y = TOP_MARGIN;
 const BAR2_Y = TOP_MARGIN + BAR_HEIGHT + BAR_GAP;
 const CHART_HEIGHT = BAR2_Y + BAR_HEIGHT + BOTTOM_MARGIN;
@@ -36,16 +50,25 @@ interface NoiseChartProps {
   outdoor: number | undefined | null;
 }
 
+const BAR_FILL_NORMAL = "#06E2F4";
+const BAR_FILL_OVERFLOW = "#FE0C0C";
+
 function NoiseChart({ indoor, outdoor }: NoiseChartProps) {
   const indoorClamped = clampNoise(indoor);
   const outdoorClamped = clampNoise(outdoor);
   const indoorWidth = (BAR_WIDTH * indoorClamped) / 100;
   const outdoorWidth = (BAR_WIDTH * outdoorClamped) / 100;
+  const indoorOverflow = noiseOutOfRange(indoor);
+  const outdoorOverflow = noiseOutOfRange(outdoor);
+  const indoorFill = indoorOverflow ? BAR_FILL_OVERFLOW : BAR_FILL_NORMAL;
+  const outdoorFill = outdoorOverflow ? BAR_FILL_OVERFLOW : BAR_FILL_NORMAL;
 
   return (
     <svg
       viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-      className="w-full max-w-[140px] max-h-full aspect-[187/50]"
+      className="block h-auto w-full max-w-full"
+      role="img"
+      aria-hidden
       preserveAspectRatio="xMidYMid meet"
     >
       {/* Shared vertical baseline at x=0 for both bars */}
@@ -71,8 +94,8 @@ function NoiseChart({ indoor, outdoor }: NoiseChartProps) {
         y={BAR1_Y}
         width={indoorWidth}
         height={BAR_HEIGHT}
-        fill="#06E2F4"
-        style={{ transition: "width 0.5s ease-out" }}
+        fill={indoorFill}
+        style={{ transition: "width 0.5s ease-out, fill 0.35s ease-out" }}
       />
 
       {/* OUTDOOR track */}
@@ -88,8 +111,8 @@ function NoiseChart({ indoor, outdoor }: NoiseChartProps) {
         y={BAR2_Y}
         width={outdoorWidth}
         height={BAR_HEIGHT}
-        fill="#06E2F4"
-        style={{ transition: "width 0.5s ease-out" }}
+        fill={outdoorFill}
+        style={{ transition: "width 0.5s ease-out, fill 0.35s ease-out" }}
       />
     </svg>
   );
@@ -99,8 +122,24 @@ export default function NoiseMonitoring({
   indoorNoise,
   outdoorNoise,
 }: NoiseMonitoringProps) {
-  const indoorDisplay = formatNoise(indoorNoise);
-  const outdoorDisplay = formatNoise(outdoorNoise);
+  const indoorDisplay = noiseDisplayText(indoorNoise);
+  const outdoorDisplay = noiseDisplayText(outdoorNoise);
+  const indoorHi =
+    typeof indoorNoise === "number" &&
+    !Number.isNaN(indoorNoise) &&
+    indoorNoise > NOISE_DB_MAX;
+  const indoorLo =
+    typeof indoorNoise === "number" &&
+    !Number.isNaN(indoorNoise) &&
+    indoorNoise < NOISE_DB_MIN;
+  const outdoorHi =
+    typeof outdoorNoise === "number" &&
+    !Number.isNaN(outdoorNoise) &&
+    outdoorNoise > NOISE_DB_MAX;
+  const outdoorLo =
+    typeof outdoorNoise === "number" &&
+    !Number.isNaN(outdoorNoise) &&
+    outdoorNoise < NOISE_DB_MIN;
 
   return (
     <div className="w-[240px] h-[158px] shrink-0 rounded-[20px] bg-[#D9D9D9]/15 px-4 py-3 flex flex-col overflow-hidden">
@@ -110,28 +149,56 @@ export default function NoiseMonitoring({
           Noise Monitoring
         </span>
       </div>
-      <div className="flex-1 min-h-0 flex flex-row items-center justify-center gap-2">
-        {/* Labels column */}
-        <div className="flex flex-col justify-between text-xs font-medium text-white tracking-wide">
-          <span>INDOOR</span>
-          <span>OUTDOOR</span>
-        </div>
+      <div className="flex min-h-0 flex-1 flex-col justify-center">
+        {/* Side labels + fluid chart (fills remaining width inside the panel) */}
+        <div className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-stretch gap-x-2">
+          <div className="flex min-w-0 justify-end pr-0.5">
+            <div className="flex flex-col justify-between py-0.5 text-xs font-medium tracking-wide text-white">
+              <span className="leading-none">INDOOR</span>
+              <span className="leading-none">OUTDOOR</span>
+            </div>
+          </div>
 
-        {/* Shared SVG chart with one baseline and two bars */}
-        <div className="flex-1 min-w-0 flex justify-center items-center">
-          <NoiseChart indoor={indoorNoise} outdoor={outdoorNoise} />
-        </div>
+          <div className="flex min-w-0 items-center justify-center">
+            <NoiseChart indoor={indoorNoise} outdoor={outdoorNoise} />
+          </div>
 
-        {/* Values column */}
-        <div className="flex flex-col justify-between text-xs font-semibold text-white tabular-nums">
-          <span>
-            {indoorDisplay}
-            <span className="text-[10px] text-white/70"> dB</span>
-          </span>
-          <span>
-            {outdoorDisplay}
-            <span className="text-[10px] text-white/70"> dB</span>
-          </span>
+          <div className="flex min-w-0 justify-start pl-0.5">
+            <div className="flex flex-col justify-between py-0.5 text-xs font-semibold tabular-nums">
+              <span
+                className={`leading-none ${noiseOutOfRange(indoorNoise) ? "text-[#FE0C0C]" : "text-white"}`}
+              >
+                {indoorDisplay}
+                {indoorHi || indoorLo ? (
+                  <span className="ml-0.5 text-[9px] font-bold text-[#FE0C0C]">
+                    {indoorHi ? "HI" : "LO"}
+                  </span>
+                ) : null}
+                <span
+                  className={`text-[10px] ${noiseOutOfRange(indoorNoise) ? "text-[#FE0C0C]/80" : "text-white/70"}`}
+                >
+                  {" "}
+                  dB
+                </span>
+              </span>
+              <span
+                className={`leading-none ${noiseOutOfRange(outdoorNoise) ? "text-[#FE0C0C]" : "text-white"}`}
+              >
+                {outdoorDisplay}
+                {outdoorHi || outdoorLo ? (
+                  <span className="ml-0.5 text-[9px] font-bold text-[#FE0C0C]">
+                    {outdoorHi ? "HI" : "LO"}
+                  </span>
+                ) : null}
+                <span
+                  className={`text-[10px] ${noiseOutOfRange(outdoorNoise) ? "text-[#FE0C0C]/80" : "text-white/70"}`}
+                >
+                  {" "}
+                  dB
+                </span>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -65,26 +65,20 @@ export default function GeneratorVibration({ vibrationDE, vibrationNDE }: Genera
   useEffect(() => {
     if (dePoints.length === 0) return;
     const t = setInterval(() => {
-      setDePoints((prev) => {
-        const nextY = vibrationDE != null
-          ? nextVibration(vibrationDE, vibrationDE, 0.15)
-          : nextVibration(deLast.current, 1.4, 0.6);
-        deLast.current = nextY;
-        const next = [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }].map(
-          (p, i) => ({ ...p, x: i })
-        );
-        return next;
-      });
-      setNdePoints((prev) => {
-        const nextY = vibrationNDE != null
-          ? nextVibration(vibrationNDE, vibrationNDE, 0.15)
-          : nextVibration(ndeLast.current, 1.8, 0.5);
-        ndeLast.current = nextY;
-        const next = [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }].map(
-          (p, i) => ({ ...p, x: i })
-        );
-        return next;
-      });
+      if (vibrationDE != null) {
+        setDePoints((prev) => {
+          const nextY = nextVibration(vibrationDE, vibrationDE, 0.08);
+          deLast.current = nextY;
+          return [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }].map((p, i) => ({ ...p, x: i }));
+        });
+      }
+      if (vibrationNDE != null) {
+        setNdePoints((prev) => {
+          const nextY = nextVibration(vibrationNDE, vibrationNDE, 0.08);
+          ndeLast.current = nextY;
+          return [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }].map((p, i) => ({ ...p, x: i }));
+        });
+      }
     }, UPDATE_MS);
     return () => clearInterval(t);
   }, [dePoints.length, vibrationDE, vibrationNDE]);
@@ -120,7 +114,7 @@ export default function GeneratorVibration({ vibrationDE, vibrationNDE }: Genera
             />
             <span className="text-[11px] font-semibold text-white">DE</span>
             <span className="w-[32px] text-right text-[11px] font-semibold tabular-nums" style={{ color: DE_COLOR }}>
-              {deLast.current.toFixed(2)}
+              {vibrationDE != null ? deLast.current.toFixed(2) : "--"}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -130,7 +124,7 @@ export default function GeneratorVibration({ vibrationDE, vibrationNDE }: Genera
             />
             <span className="text-[11px] font-semibold text-white">NDE</span>
             <span className="w-[32px] text-right text-[11px] font-semibold tabular-nums" style={{ color: NDE_COLOR }}>
-              {ndeLast.current.toFixed(2)}
+              {vibrationNDE != null ? ndeLast.current.toFixed(2) : "--"}
             </span>
           </div>
         </div>

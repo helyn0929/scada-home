@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 
 const FILL_COLOR_NORMAL = "#06E2F4";
 const FILL_COLOR_ALARM = "#FE0C0C";
@@ -6,7 +6,6 @@ const VALUE_MIN = 0;
 const VALUE_MAX = 10;
 /** ppm at or above → bar turns red */
 const PPM_ALARM_AT = 5;
-const UPDATE_MS = 1000;
 
 const BAR_WIDTH = 118;
 const BAR_HEIGHT = 10;
@@ -18,11 +17,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function bump(prev: number, spread: number): number {
-  const delta = (Math.random() - 0.5) * spread;
-  return clamp(prev + delta, VALUE_MIN, VALUE_MAX);
-}
-
 function QualityBarRow({
   line1,
   line2,
@@ -31,14 +25,14 @@ function QualityBarRow({
 }: {
   line1: string;
   line2: string;
-  value: number;
+  value: number | null | undefined;
   unit: string;
 }) {
-  const clamped = clamp(value, VALUE_MIN, VALUE_MAX);
-  const outHigh = value > VALUE_MAX;
-  const outLow = value < VALUE_MIN;
+  const clamped = value != null ? clamp(value, VALUE_MIN, VALUE_MAX) : 0;
+  const outHigh = value != null && value > VALUE_MAX;
+  const outLow = value != null && value < VALUE_MIN;
   const outOfRange = outHigh || outLow;
-  const fillWidth = (BAR_WIDTH * clamped) / VALUE_MAX;
+  const fillWidth = value != null ? (BAR_WIDTH * clamped) / VALUE_MAX : 0;
   const fillColor = outOfRange
     ? FILL_COLOR_ALARM
     : clamped >= PPM_ALARM_AT
@@ -91,18 +85,19 @@ function QualityBarRow({
         <span
           className={`whitespace-nowrap text-right text-xs font-semibold tabular-nums leading-none ${outOfRange ? "text-[#FE0C0C]" : "text-white"}`}
         >
-          {outOfRange ? value.toFixed(1) : clamped.toFixed(1)}
+          {value == null ? "--" : outOfRange ? value.toFixed(1) : clamped.toFixed(1)}
           {outOfRange ? (
             <span className="ml-0.5 text-[9px] font-bold text-[#FE0C0C]">
               {outHigh ? "HI" : "LO"}
             </span>
           ) : null}
-          <span
-            className={`text-[10px] ${outOfRange ? "text-[#FE0C0C]/80" : "text-white/70"}`}
-          >
-            {" "}
-            {unit}
-          </span>
+          {value != null && (
+            <span
+              className={`text-[10px] ${outOfRange ? "text-[#FE0C0C]/80" : "text-white/70"}`}
+            >
+              {" "}{unit}
+            </span>
+          )}
         </span>
       </div>
     </div>
@@ -130,17 +125,6 @@ export default function WaterQualityTesting({
   waterQualityIn,
   waterQualityOut,
 }: WaterQualityTestingProps) {
-  const [ppmBeforeDn900, setPpmBeforeDn900] = useState(3.8);
-  const [ppmAfterDn1400d, setPpmAfterDn1400d] = useState(2.4);
-
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setPpmBeforeDn900((v) => waterQualityIn != null ? waterQualityIn : bump(v, 0.35));
-      setPpmAfterDn1400d((v) => waterQualityOut != null ? waterQualityOut : bump(v, 0.3));
-    }, UPDATE_MS);
-    return () => window.clearInterval(id);
-  }, [waterQualityIn, waterQualityOut]);
-
   return (
     <div
       className={`flex min-h-[96px] w-[240px] shrink-0 flex-col rounded-[20px] px-3 ${hideTitle ? "pb-3 pt-0" : "py-3"}`}
@@ -154,13 +138,13 @@ export default function WaterQualityTesting({
         <QualityBarRow
           line1="Before"
           line2="DN900"
-          value={ppmBeforeDn900}
+          value={waterQualityIn}
           unit="ppm"
         />
         <QualityBarRow
           line1="After"
           line2="DN1400D"
-          value={ppmAfterDn1400d}
+          value={waterQualityOut}
           unit="ppm"
         />
       </div>

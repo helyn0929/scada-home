@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 
 const FILL_COLOR_NORMAL = "#06E2F4";
 const FILL_COLOR_ALARM = "#FE0C0C";
@@ -6,7 +6,6 @@ const PRESSURE_MIN = 0;
 const PRESSURE_MAX = 10;
 /** bar below this (bar) → fill turns red */
 const PRESSURE_ALARM_LOW_BAR = 5.25;
-const UPDATE_MS = 1100;
 
 /** Shorter, thinner bar track — fits 96px card and aligns with KPI content width */
 const BAR_WIDTH = 118;
@@ -19,11 +18,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function bump(prev: number, spread: number): number {
-  const delta = (Math.random() - 0.5) * spread;
-  return clamp(prev + delta, PRESSURE_MIN, PRESSURE_MAX);
-}
-
 function PressureBarRow({
   line1,
   line2,
@@ -31,13 +25,13 @@ function PressureBarRow({
 }: {
   line1: string;
   line2: string;
-  value: number;
+  value: number | null | undefined;
 }) {
-  const clamped = clamp(value, PRESSURE_MIN, PRESSURE_MAX);
-  const outHigh = value > PRESSURE_MAX;
-  const outLow = value < PRESSURE_MIN;
+  const clamped = value != null ? clamp(value, PRESSURE_MIN, PRESSURE_MAX) : 0;
+  const outHigh = value != null && value > PRESSURE_MAX;
+  const outLow = value != null && value < PRESSURE_MIN;
   const outOfRange = outHigh || outLow;
-  const fillWidth = (BAR_WIDTH * clamped) / PRESSURE_MAX;
+  const fillWidth = value != null ? (BAR_WIDTH * clamped) / PRESSURE_MAX : 0;
   const fillColor = outOfRange
     ? FILL_COLOR_ALARM
     : clamped < PRESSURE_ALARM_LOW_BAR
@@ -90,18 +84,19 @@ function PressureBarRow({
         <span
           className={`whitespace-nowrap text-right text-xs font-semibold tabular-nums leading-none ${outOfRange ? "text-[#FE0C0C]" : "text-white"}`}
         >
-          {outOfRange ? value.toFixed(1) : clamped.toFixed(1)}
+          {value == null ? "--" : outOfRange ? value.toFixed(1) : clamped.toFixed(1)}
           {outOfRange ? (
             <span className="ml-0.5 text-[9px] font-bold text-[#FE0C0C]">
               {outHigh ? "HI" : "LO"}
             </span>
           ) : null}
-          <span
-            className={`text-[10px] ${outOfRange ? "text-[#FE0C0C]/80" : "text-white/70"}`}
-          >
-            {" "}
-            bar
-          </span>
+          {value != null && (
+            <span
+              className={`text-[10px] ${outOfRange ? "text-[#FE0C0C]/80" : "text-white/70"}`}
+            >
+              {" "}bar
+            </span>
+          )}
         </span>
       </div>
     </div>
@@ -129,17 +124,6 @@ export default function PressureDN900({
   pressureBefore,
   pressureAfter,
 }: PressureDN900Props) {
-  const [pressureBeforeDn900, setPressureBeforeDn900] = useState(5.2);
-  const [pressureAfterDn900, setPressureAfterDn900] = useState(4.6);
-
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setPressureBeforeDn900((v) => pressureBefore != null ? pressureBefore : bump(v, 0.45));
-      setPressureAfterDn900((v) => pressureAfter != null ? pressureAfter : bump(v, 0.4));
-    }, UPDATE_MS);
-    return () => window.clearInterval(id);
-  }, [pressureBefore, pressureAfter]);
-
   return (
     <div
       className={`flex min-h-[96px] w-[240px] shrink-0 flex-col rounded-[20px] px-3 ${hideTitle ? "pb-3 pt-0" : "py-3"}`}
@@ -150,8 +134,8 @@ export default function PressureDN900({
         </div>
       ) : null}
       <div className="flex min-h-0 flex-1 flex-col justify-start gap-2">
-        <PressureBarRow line1="Upstream" line2="DN900" value={pressureBeforeDn900} />
-        <PressureBarRow line1="Downstream" line2="DN900" value={pressureAfterDn900} />
+        <PressureBarRow line1="Upstream" line2="DN900" value={pressureBefore} />
+        <PressureBarRow line1="Downstream" line2="DN900" value={pressureAfter} />
       </div>
     </div>
   );

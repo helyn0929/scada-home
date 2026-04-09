@@ -35,7 +35,7 @@ export default function NavBar() {
         src={item.icon}
         alt={item.label}
         className="h-12 w-12 cursor-pointer hover:scale-110 transition"
-        onClick={handleClick(item.label)}
+        onClick={() => handleClick(item.label)}
       />
 
 

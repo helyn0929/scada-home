@@ -4,8 +4,12 @@ InfluxDB 查詢模組（Demo 精簡版）
 """
 
 import os
+import time
+import logging
 from influxdb_client import InfluxDBClient
 from dotenv import load_dotenv
+
+logger = logging.getLogger("influx_client")
 
 load_dotenv()
 
@@ -16,9 +20,11 @@ INFLUX_BUCKET = os.getenv("INFLUX_BUCKET", "demo_realtime")
 PLANT_ID = os.getenv("PLANT_ID", "hushan")
 
 LATEST_VALUE_RANGE = "1m"
+ENERGY_CACHE_TTL = 300  # 累積發電量每 5 分鐘重算一次
 
 _client = None
 _query_api = None
+_energy_cache: dict = {"value": 0.0, "ts": 0.0}
 
 
 def get_query_api():
@@ -33,6 +39,7 @@ def get_accumulated_energy(hours=24):
     """
     從 InfluxDB 累加 GEN_POWER_P 計算發電量 (kWh)
     公式：每筆 kW × 5秒 / 3600 = kWh
+    結果 cache 5 分鐘，避免每次請求都掃 24h 資料。
 
     Args:
         hours: 累加幾小時（預設 24 小時）
@@ -40,6 +47,10 @@ def get_accumulated_energy(hours=24):
     Returns:
         float: 累積發電量 (kWh)，查無資料回傳 0
     """
+    now = time.time()
+    if now - _energy_cache["ts"] < ENERGY_CACHE_TTL:
+        return _energy_cache["value"]
+
     try:
         flux = f'''
             from(bucket: "{INFLUX_BUCKET}")
@@ -58,13 +69,16 @@ def get_accumulated_energy(hours=24):
         for table in tables:
             for record in table.records:
                 total_kw = record.get_value()
-                # 每筆間隔 5 秒，轉 kWh
-                return round(total_kw * 5 / 3600, 2)
+                result = round(total_kw * 5 / 3600, 2)
+                _energy_cache["value"] = result
+                _energy_cache["ts"] = now
+                return result
 
+        _energy_cache["ts"] = now  # 查無資料也更新 ts，避免空結果時每次都重查
         return 0
     except Exception as e:
-        print(f"[InfluxDB] 累積發電量查詢失敗: {e}")
-        return 0
+        logger.error(f"累積發電量查詢失敗: {e}")
+        return _energy_cache["value"]
 
 
 def get_all_latest_values():
@@ -97,5 +111,5 @@ def get_all_latest_values():
 
         return result
     except Exception as e:
-        print(f"[InfluxDB] 查詢失敗: {e}")
+        logger.error(f"最新值查詢失敗: {e}")
         return {}

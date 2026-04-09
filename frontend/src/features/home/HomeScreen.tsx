@@ -19,13 +19,26 @@ function format1Decimal(value: number | undefined | null) {
   return Number(value).toFixed(1)
 }
 
+const STATUS_CONFIG = {
+  connecting: { color: "bg-yellow-400", label: "連線中" },
+  ok:         { color: "bg-green-400",  label: "即時" },
+  error:      { color: "bg-red-500",    label: "連線失敗" },
+};
+
 export default function HomeScreen() {
-  const data = useLiveTelemetry("/api/telemetry");
+  const { data, status } = useLiveTelemetry("/api/telemetry");
+  const { color, label } = STATUS_CONFIG[status];
 
   return (
     <div className="relative min-h-screen bg-black text-white">
       {/* Floating NavBar */}
       <NavBar />
+
+      {/* 連線狀態指示 */}
+      <div className="fixed bottom-4 right-4 flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 backdrop-blur-sm">
+        <span className={`h-2 w-2 rounded-full ${color} ${status === "ok" ? "animate-pulse" : ""}`} />
+        <span className="text-[11px] font-medium text-white/80">{label}</span>
+      </div>
 
       {/* Horizontal scroll when viewport is narrower than fixed layout — layout does not shrink */}
       <div className="min-h-dvh overflow-x-auto overflow-y-auto bg-black text-white">

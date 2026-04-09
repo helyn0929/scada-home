@@ -1,14 +1,20 @@
 [
     {
+        "id": "b93569b146043fe0",
+        "type": "tab",
+        "label": "plc_demo測試",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
         "id": "demo_inject",
         "type": "inject",
-        "z": "",
+        "z": "b93569b146043fe0",
         "name": "模擬 PLC (每5秒)",
         "props": [
             {
-                "p": "payload",
-                "v": "",
-                "vt": "jsonata"
+                "p": "payload"
             }
         ],
         "repeat": "5",
@@ -17,31 +23,40 @@
         "onceDelay": "1",
         "topic": "",
         "payload": "",
-        "payloadType": "date",
-        "x": 170,
-        "y": 200,
-        "wires": [["demo_function"]]
+        "payloadType": "jsonata",
+        "x": 130,
+        "y": 160,
+        "wires": [
+            [
+                "demo_function"
+            ]
+        ]
     },
     {
         "id": "demo_function",
         "type": "function",
-        "z": "",
-        "name": "DB74 全點位 → InfluxDB (plc_points)",
-        "func": "// =============================================\n// DB74 全點位模擬 → InfluxDB\n// tag_code 完全依照 plc_points 表\n// 到現場時：刪除模擬區塊，改用 var plc = msg.payload\n// =============================================\n\nvar r = Math.random;\nvar power = 500 + r() * 1000;\nvar flow = power / 500 - 0.2 + r() * 0.4;\n\nvar plc = {\n    // === Byte 0: DN1350 閥 ===\n    \"VALVE_DN1350_CMD_OPEN\":    0,\n    \"VALVE_DN1350_CMD_CLOSE\":   0,\n    \"VALVE_DN1350_FB_OPEN\":     r() > 0.3 ? 1 : 0,\n    \"VALVE_DN1350_FB_CLOSE\":    r() > 0.7 ? 1 : 0,\n    \"VALVE_DN1350_REMOTE\":      1,\n    \"VALVE_DN1350_CMD_ALARM\":   0,\n    \"VALVE_DN1350_SPARE_1\":     0,\n    \"VALVE_DN1350_SPARE_2\":     0,\n\n    // === Byte 1: DN1400 進水 ===\n    \"VALVE_DN1400_IN_CMD_OPEN\":       1,\n    \"VALVE_DN1400_IN_CMD_CLOSE\":      0,\n    \"VALVE_DN1400_FB_OPEN\":           1,\n    \"VALVE_DN1400_FB_CLOSE\":          0,\n    \"VALVE_DN1400_IN_FILL_CMD_OPEN\":  0,\n    \"VALVE_DN1400_IN_FILL_CMD_CLOSE\": 0,\n    \"VALVE_DN1400_IN_FILL_FB_OPEN\":   0,\n    \"VALVE_DN1400_IN_FILL_FB_CLOSE\":  1,\n\n    // === Byte 2: DN1400 尾水 ===\n    \"VALVE_DN1400_OUT_CMD_OPEN\":       1,\n    \"VALVE_DN1400_OUT_CMD_CLOSE\":      0,\n    \"VALVE_DN1400_OUT_FB_OPEN\":        1,\n    \"VALVE_DN1400_OUT_FB_CLOSE\":       0,\n    \"VALVE_DN1400_OUT_FILL_CMD_OPEN\":  0,\n    \"VALVE_DN1400_OUT_FILL_CMD_CLOSE\": 0,\n    \"VALVE_DN1400_OUT_FILL_FB_OPEN\":   0,\n    \"VALVE_DN1400_OUT_FILL_FB_CLOSE\":  1,\n\n    // === Byte 3: DN900 ===\n    \"VALVE_DN900_CMD_OPEN\":       1,\n    \"VALVE_DN900_CMD_CLOSE\":      0,\n    \"VALVE_DN900_FB_OPEN\":        1,\n    \"VALVE_DN900_FB_CLOSE\":       0,\n    \"VALVE_DN900_FILL_CMD_OPEN\":  0,\n    \"VALVE_DN900_FILL_CMD_CLOSE\": 0,\n    \"VALVE_DN900_FILL_FB_OPEN\":   0,\n    \"VALVE_DN900_FILL_FB_CLOSE\":  1,\n\n    // === Byte 4: HPU 液壓 ===\n    \"HPU_TURB_MOTOR\":          1,\n    \"HPU_TURB_QSD_VALVE\":      0,\n    \"HPU_TURB_BRAKE\":          0,\n    \"VALVE_DN900_STS\":         0,\n    \"VALVE_DN1400_STS\":        0,\n    \"HPU_BYPASS_MOTOR\":        1,\n    \"HPU_BYPASS_CIRC_VALVE\":   0,\n    \"HPU_BYPASS_DN1400_VALVE\": 0,\n\n    // === Byte 5: 旁通 + 系統告警 + 洩壓閥 ===\n    \"VALVE_DN1800_QSD\":        0,\n    \"VALVE_DN1800_CLOSE\":      0,\n    \"VALVE_DN1800_OPEN\":       0,\n    \"SYS_UPS_ALARM\":           0,\n    \"SYS_SHUTDOWN_ALARM\":      0,\n    \"VALVE_OPV_FB_OPEN\":       r() > 0.8 ? 1 : 0,\n    \"VALVE_OPV_FB_CLOSE\":      r() > 0.2 ? 1 : 0,\n    \"VALVE_OPV_ALARM\":         0,\n\n    // === Byte 6: Int ===\n    \"TURB_GUIDE_VANE_RAW\":     Math.round(r() * 27648),\n\n    // === Byte 8+: Real ===\n    \"TURB_GUIDE_VANE\":         Math.round(r() * 100 * 10) / 10,\n    \"TURB_FLOW_IN\":            Math.round(flow * 100) / 100,\n    \"ENV_WATER_IN\":            Math.round((2 + r() * 4) * 100) / 100,\n    \"ENV_WATER_OUT\":           Math.round((1 + r() * 4) * 100) / 100,\n    \"TURB_PRESS_BEFORE\":       Math.round((4 + r() * 4) * 100) / 100,\n    \"TURB_PRESS_AFTER\":        Math.round((3 + r() * 4) * 100) / 100,\n    \"GEN_POWER_P\":             Math.round(power * 100) / 100,\n    \"GEN_POWER_Q\":             Math.round((-200 + r() * 400) * 100) / 100,\n    \"GEN_POWER_S\":             Math.round(power * 1.05 * 100) / 100,\n    \"HPU_PRESS_TURB1\":         Math.round((80 + r() * 100) * 10) / 10,\n    \"HPU_PRESS_BYPASS2\":       Math.round((100 + r() * 200) * 10) / 10,\n    \"GEN_TEMP_U\":              Math.round((50 + r() * 45) * 10) / 10,\n    \"GEN_TEMP_V\":              Math.round((50 + r() * 45) * 10) / 10,\n    \"GEN_TEMP_W\":              Math.round((50 + r() * 45) * 10) / 10,\n    \"GEN_BEAR_TEMP_DE\":        Math.round((30 + r() * 30) * 10) / 10,\n    \"GEN_BEAR_TEMP_NDE\":       Math.round((30 + r() * 30) * 10) / 10,\n    \"GEN_VIB_DE\":              Math.round((0.2 + r() * 1.3) * 100) / 100,\n    \"GEN_VIB_NDE\":             Math.round((0.2 + r() * 1.3) * 100) / 100,\n    \"GEN_SPEED_PCT\":           Math.round((90 + r() * 15) * 10) / 10,\n    \"GEN_SPEED\":               Math.round(340 + r() * 40),\n    \"ELEC_CURR_L1\":            Math.round((-500 + r() * 1000) * 10) / 10,\n    \"ELEC_CURR_L2\":            Math.round((-500 + r() * 1000) * 10) / 10,\n    \"ELEC_CURR_L3\":            Math.round((-500 + r() * 1000) * 10) / 10,\n    \"ELEC_CURR_L1P\":           Math.round((-800 + r() * 1600) * 10) / 10,\n    \"ELEC_CURR_L2P\":           Math.round((-800 + r() * 1600) * 10) / 10,\n    \"ELEC_CURR_L3P\":           Math.round((-800 + r() * 1600) * 10) / 10,\n    \"ELEC_VOLT_AB\":            Math.round((380 + r() * 40) * 10) / 10,\n    \"ELEC_VOLT_BC\":            Math.round((380 + r() * 40) * 10) / 10,\n    \"ELEC_VOLT_CA\":            Math.round((380 + r() * 40) * 10) / 10,\n    \"CTRL_TEMP\":               Math.round((20 + r() * 20) * 10) / 10,\n    \"GEN_TEMP_ENV\":            Math.round((20 + r() * 15) * 10) / 10,\n    \"ENV_NOISE_IN\":            Math.round((50 + r() * 50) * 10) / 10,\n    \"ENV_NOISE_OUT\":           Math.round((50 + r() * 50) * 10) / 10,\n    \"CALC_FLOW_PLUNGER\":       Math.round(r() * 5 * 100) / 100,\n    \"CALC_FLOW_TURBINE\":       Math.round(flow * 100) / 100,\n    \"CALC_FLOW_TOTAL\":         Math.round((flow + r() * 2) * 100) / 100,\n    \"VALVE_DN1350_PRESS_IN\":   Math.round((5 + r() * 8) * 100) / 100,\n    \"VALVE_DN1350_PRESS_OUT\":  Math.round((3 + r() * 6) * 100) / 100,\n    \"VALVE_OPV_PRESS_WATER\":   Math.round((5 + r() * 15) * 100) / 100,\n    \"VALVE_OPV_PRESS_HYD\":     Math.round((30 + r() * 100) * 10) / 10,\n\n    // === 非 DB74，但 homepage 需要 ===\n    \"VALVE_DN1350_PCT\":        Math.round(r() * 100 * 10) / 10\n};\n\n// device_code 依照 plc_points 表\nvar deviceMap = {\n    VALVE_DN1350_CMD_OPEN: \"valve\", VALVE_DN1350_CMD_CLOSE: \"valve\",\n    VALVE_DN1350_FB_OPEN: \"valve\", VALVE_DN1350_FB_CLOSE: \"valve\",\n    VALVE_DN1350_REMOTE: \"valve\", VALVE_DN1350_CMD_ALARM: \"valve\",\n    VALVE_DN1350_SPARE_1: \"valve\", VALVE_DN1350_SPARE_2: \"valve\",\n    VALVE_DN1400_IN_CMD_OPEN: \"valve\", VALVE_DN1400_IN_CMD_CLOSE: \"valve\",\n    VALVE_DN1400_FB_OPEN: \"valve\", VALVE_DN1400_FB_CLOSE: \"valve\",\n    VALVE_DN1400_IN_FILL_CMD_OPEN: \"valve\", VALVE_DN1400_IN_FILL_CMD_CLOSE: \"valve\",\n    VALVE_DN1400_IN_FILL_FB_OPEN: \"valve\", VALVE_DN1400_IN_FILL_FB_CLOSE: \"valve\",\n    VALVE_DN1400_OUT_CMD_OPEN: \"valve\", VALVE_DN1400_OUT_CMD_CLOSE: \"valve\",\n    VALVE_DN1400_OUT_FB_OPEN: \"valve\", VALVE_DN1400_OUT_FB_CLOSE: \"valve\",\n    VALVE_DN1400_OUT_FILL_CMD_OPEN: \"valve\", VALVE_DN1400_OUT_FILL_CMD_CLOSE: \"valve\",\n    VALVE_DN1400_OUT_FILL_FB_OPEN: \"valve\", VALVE_DN1400_OUT_FILL_FB_CLOSE: \"valve\",\n    VALVE_DN900_CMD_OPEN: \"valve\", VALVE_DN900_CMD_CLOSE: \"valve\",\n    VALVE_DN900_FB_OPEN: \"valve\", VALVE_DN900_FB_CLOSE: \"valve\",\n    VALVE_DN900_FILL_CMD_OPEN: \"valve\", VALVE_DN900_FILL_CMD_CLOSE: \"valve\",\n    VALVE_DN900_FILL_FB_OPEN: \"valve\", VALVE_DN900_FILL_FB_CLOSE: \"valve\",\n    VALVE_DN900_STS: \"valve\", VALVE_DN1400_STS: \"valve\",\n    VALVE_DN1800_QSD: \"valve\", VALVE_DN1800_CLOSE: \"valve\", VALVE_DN1800_OPEN: \"valve\",\n    VALVE_OPV_FB_OPEN: \"valve\", VALVE_OPV_FB_CLOSE: \"valve\", VALVE_OPV_ALARM: \"valve\",\n    VALVE_DN1350_PRESS_IN: \"valve\", VALVE_DN1350_PRESS_OUT: \"valve\",\n    VALVE_OPV_PRESS_WATER: \"valve\", VALVE_OPV_PRESS_HYD: \"valve\",\n    VALVE_DN1350_PCT: \"valve\",\n    HPU_TURB_MOTOR: \"hpu\", HPU_TURB_QSD_VALVE: \"hpu\", HPU_TURB_BRAKE: \"hpu\",\n    HPU_BYPASS_MOTOR: \"hpu\", HPU_BYPASS_CIRC_VALVE: \"hpu\", HPU_BYPASS_DN1400_VALVE: \"hpu\",\n    HPU_PRESS_TURB1: \"hpu\", HPU_PRESS_BYPASS2: \"hpu\",\n    SYS_UPS_ALARM: \"control\", SYS_SHUTDOWN_ALARM: \"control\", CTRL_TEMP: \"control\",\n    TURB_GUIDE_VANE_RAW: \"turbine\", TURB_GUIDE_VANE: \"turbine\",\n    TURB_FLOW_IN: \"turbine\", TURB_PRESS_BEFORE: \"turbine\", TURB_PRESS_AFTER: \"turbine\",\n    CALC_FLOW_PLUNGER: \"turbine\", CALC_FLOW_TURBINE: \"turbine\",\n    CALC_FLOW_TOTAL: \"general\",\n    GEN_POWER_P: \"generator\", GEN_POWER_Q: \"generator\", GEN_POWER_S: \"generator\",\n    GEN_TEMP_U: \"generator\", GEN_TEMP_V: \"generator\", GEN_TEMP_W: \"generator\",\n    GEN_BEAR_TEMP_DE: \"generator\", GEN_BEAR_TEMP_NDE: \"generator\",\n    GEN_VIB_DE: \"generator\", GEN_VIB_NDE: \"generator\",\n    GEN_SPEED_PCT: \"generator\", GEN_SPEED: \"generator\", GEN_TEMP_ENV: \"generator\",\n    ELEC_CURR_L1: \"electrical\", ELEC_CURR_L2: \"electrical\", ELEC_CURR_L3: \"electrical\",\n    ELEC_CURR_L1P: \"electrical\", ELEC_CURR_L2P: \"electrical\", ELEC_CURR_L3P: \"electrical\",\n    ELEC_VOLT_AB: \"electrical\", ELEC_VOLT_BC: \"electrical\", ELEC_VOLT_CA: \"electrical\",\n    ENV_WATER_IN: \"environment\", ENV_WATER_OUT: \"environment\",\n    ENV_NOISE_IN: \"environment\", ENV_NOISE_OUT: \"environment\"\n};\n\nvar lines = [];\nfor (var tag in plc) {\n    var device = deviceMap[tag] || \"unknown\";\n    var val = plc[tag];\n    lines.push(\"measurements,plant_id=hushan,tag_code=\" + tag + \",device_code=\" + device + \" value=\" + val);\n}\n\nmsg.payload = lines.join(\"\\n\");\nmsg.headers = {\n    \"Authorization\": \"Token UrXPX5bskMb-AwIKOm7k7AuLPVuxiSaIUd943uhHwrZcg2gbI4K7fsfWWMqyxTqJi5iFpGNstKQvHwmdkxxGfQ==\",\n    \"Content-Type\": \"text/plain\"\n};\nmsg.url = \"http://192.168.14.203:8086/api/v2/write?org=SCADA_hushan&bucket=demo_realtime&precision=ms\";\nreturn msg;",
+        "z": "b93569b146043fe0",
+        "name": "PLC → InfluxDB line protocol",
+        "func": "// =============================================\n// 模擬完整 PLC DB74 資料 → InfluxDB line protocol\n// 涵蓋所有 is_active=1 plc_points（62點）\n// 到現場時：刪除「模擬資料」區塊，改用真實 msg.payload\n// =============================================\n\n// --- 模擬資料（到現場刪掉這段）---\nvar r = Math.random;\n\n// 主機組運行狀態（讓相關數值有邏輯關聯）\nvar power = 800 + r() * 600;          // 800–1400 kW\nvar flow = power / 600 + r() * 0.2;  // ~1.5–2.5 cms\nvar guideVane = 40 + r() * 40;           // 40–80 %\nvar speedRpm = 350 + r() * 20;          // 350–370 rpm\n\n// 閥門狀態（主管路正常全開）\nvar mainOpen = 1;\nvar dn1350Open = r() > 0.3 ? 1 : 0;     // DN1350 偶爾關閉\nvar opvOpen = r() > 0.9 ? 1 : 0;      // 洩壓閥幾乎不開\n\nvar simulated = {\n    // ── 水輪機 ──────────────────────────────────\n    TURB_FLOW_IN: rnd(flow, 2),\n    TURB_FLOW_OUT: rnd(flow - 0.05 + r() * 0.1, 2),\n    TURB_PRESS_BEFORE: rnd(5.5 + r() * 1.5, 2),\n    TURB_PRESS_AFTER: rnd(4.0 + r() * 1.5, 2),\n    TURB_GUIDE_VANE: rnd(guideVane, 1),\n    CALC_FLOW_PLUNGER: rnd(dn1350Open * (flow * 0.3 + r() * 0.1), 2),\n    CALC_FLOW_TOTAL: rnd(flow + dn1350Open * 0.3, 2),\n\n    // ── 發電機 ──────────────────────────────────\n    GEN_SPEED: rnd(speedRpm, 1),\n    GEN_SPEED_PCT: rnd(speedRpm / 360 * 100, 1),\n    GEN_POWER_P: rnd(power, 2),\n    GEN_POWER_Q: rnd(-100 + r() * 200, 2),\n    GEN_POWER_S: rnd(power * 1.05 + r() * 10, 2),\n    GEN_TEMP_U: rnd(60 + r() * 25, 1),\n    GEN_TEMP_V: rnd(60 + r() * 25, 1),\n    GEN_TEMP_W: rnd(60 + r() * 25, 1),\n    GEN_TEMP_ENV: rnd(22 + r() * 12, 1),\n    GEN_VIB_DE: rnd(0.3 + r() * 0.9, 2),\n    GEN_VIB_NDE: rnd(0.3 + r() * 0.9, 2),\n    GEN_BEAR_TEMP_DE: rnd(45 + r() * 25, 1),\n    GEN_BEAR_TEMP_NDE: rnd(45 + r() * 25, 1),\n\n    // ── 電氣量 ──────────────────────────────────\n    ELEC_VOLT_AB: rnd(388 + r() * 8, 1),\n    ELEC_VOLT_BC: rnd(388 + r() * 8, 1),\n    ELEC_VOLT_CA: rnd(388 + r() * 8, 1),\n    ELEC_CURR_L1: rnd(power / 0.69 / 1.732, 1),   // ≈ P/(√3·U)\n    ELEC_CURR_L2: rnd(power / 0.69 / 1.732, 1),\n    ELEC_CURR_L3: rnd(power / 0.69 / 1.732, 1),\n    ELEC_CURR_L1P: rnd(power / 0.69 / 1.732 * (0.95 + r() * 0.1), 1),\n    ELEC_CURR_L2P: rnd(power / 0.69 / 1.732 * (0.95 + r() * 0.1), 1),\n    ELEC_CURR_L3P: rnd(power / 0.69 / 1.732 * (0.95 + r() * 0.1), 1),\n\n    // ── HPU 液壓站 ──────────────────────────────\n    HPU_PRESS_TURB1: rnd(145 + r() * 15, 1),\n    HPU_PRESS_BYPASS2: rnd(290 + r() * 30, 1),\n    HPU_TEMP_TURB1: rnd(38 + r() * 10, 1),\n    HPU_TEMP_BYPASS2: rnd(38 + r() * 10, 1),\n\n    // ── 控制盤 ──────────────────────────────────\n    CTRL_TEMP: rnd(24 + r() * 14, 1),\n\n    // ── 環境 ─────────────────────────────────────\n    ENV_NOISE_IN: rnd(55 + r() * 20, 1),\n    ENV_NOISE_OUT: rnd(60 + r() * 25, 1),\n    ENV_WATER_IN: rnd(2 + r() * 3, 2),\n    ENV_WATER_OUT: rnd(1 + r() * 3, 2),\n\n    // ── 閥門開度 ─────────────────────────────────\n    VALVE_DN1350_PCT: rnd(dn1350Open * (20 + r() * 80), 1),\n\n    // ── 洩壓閥壓力 ──────────────────────────────\n    VALVE_OPV_PRESS_WATER: rnd(6 + r() * 4, 2),\n    VALVE_OPV_PRESS_HYD: rnd(80 + r() * 40, 1),\n\n    // ── DN1350 閥前後壓力 ────────────────────────\n    VALVE_DN1350_PRESS_IN: rnd(7 + r() * 3, 2),\n    VALVE_DN1350_PRESS_OUT: rnd(5 + r() * 3, 2),\n\n    // ── 閥門開關回饋（Bool）──────────────────────\n    VALVE_DN1350_FB_OPEN: dn1350Open,\n    VALVE_DN1350_FB_CLOSE: 1 - dn1350Open,\n    VALVE_DN1400_FB_OPEN: mainOpen,\n    VALVE_DN1400_FB_CLOSE: 1 - mainOpen,\n    VALVE_DN1400_OUT_FB_OPEN: mainOpen,\n    VALVE_DN1400_OUT_FB_CLOSE: 1 - mainOpen,\n    VALVE_DN900_FB_OPEN: mainOpen,\n    VALVE_DN900_FB_CLOSE: 1 - mainOpen,\n    VALVE_OPV_FB_OPEN: opvOpen,\n    VALVE_OPV_FB_CLOSE: 1 - opvOpen,\n    VALVE_OPV_ALARM: 0,\n    // 充水閥（主閥開啟時充水閥關閉）\n    VALVE_DN1400_IN_FILL_FB_OPEN: 1 - mainOpen,\n    VALVE_DN1400_IN_FILL_FB_CLOSE: mainOpen,\n    VALVE_DN1400_OUT_FILL_FB_OPEN: 1 - mainOpen,\n    VALVE_DN1400_OUT_FILL_FB_CLOSE: mainOpen,\n    VALVE_DN900_FILL_FB_OPEN: 1 - mainOpen,\n    VALVE_DN900_FILL_FB_CLOSE: mainOpen,\n\n    // ── 系統告警（正常運行=0）────────────────────\n    SYS_SHUTDOWN_ALARM: 0,\n    SYS_UPS_ALARM: 0\n};\n// --- 模擬資料結束 ---\n\n// 四捨五入輔助\nfunction rnd(val, decimals) {\n    var m = Math.pow(10, decimals);\n    return Math.round(val * m) / m;\n}\n\nvar deviceMap = {\n    TURB_FLOW_IN: \"turbine\",\n    TURB_FLOW_OUT: \"turbine\",\n    TURB_PRESS_BEFORE: \"turbine\",\n    TURB_PRESS_AFTER: \"turbine\",\n    TURB_GUIDE_VANE: \"turbine\",\n    CALC_FLOW_PLUNGER: \"turbine\",\n    CALC_FLOW_TOTAL: \"general\",\n    GEN_SPEED: \"generator\",\n    GEN_SPEED_PCT: \"generator\",\n    GEN_POWER_P: \"generator\",\n    GEN_POWER_Q: \"generator\",\n    GEN_POWER_S: \"generator\",\n    GEN_TEMP_U: \"generator\",\n    GEN_TEMP_V: \"generator\",\n    GEN_TEMP_W: \"generator\",\n    GEN_TEMP_ENV: \"generator\",\n    GEN_VIB_DE: \"generator\",\n    GEN_VIB_NDE: \"generator\",\n    GEN_BEAR_TEMP_DE: \"generator\",\n    GEN_BEAR_TEMP_NDE: \"generator\",\n    ELEC_VOLT_AB: \"electrical\",\n    ELEC_VOLT_BC: \"electrical\",\n    ELEC_VOLT_CA: \"electrical\",\n    ELEC_CURR_L1: \"electrical\",\n    ELEC_CURR_L2: \"electrical\",\n    ELEC_CURR_L3: \"electrical\",\n    ELEC_CURR_L1P: \"electrical\",\n    ELEC_CURR_L2P: \"electrical\",\n    ELEC_CURR_L3P: \"electrical\",\n    HPU_PRESS_TURB1: \"hpu\",\n    HPU_PRESS_BYPASS2: \"hpu\",\n    HPU_TEMP_TURB1: \"hpu\",\n    HPU_TEMP_BYPASS2: \"hpu\",\n    CTRL_TEMP: \"control\",\n    ENV_NOISE_IN: \"environment\",\n    ENV_NOISE_OUT: \"environment\",\n    ENV_WATER_IN: \"environment\",\n    ENV_WATER_OUT: \"environment\",\n    VALVE_DN1350_PCT: \"valve\",\n    VALVE_OPV_PRESS_WATER: \"valve\",\n    VALVE_OPV_PRESS_HYD: \"valve\",\n    VALVE_DN1350_PRESS_IN: \"valve\",\n    VALVE_DN1350_PRESS_OUT: \"valve\",\n    VALVE_DN1350_FB_OPEN: \"valve\",\n    VALVE_DN1350_FB_CLOSE: \"valve\",\n    VALVE_DN1400_FB_OPEN: \"valve\",\n    VALVE_DN1400_FB_CLOSE: \"valve\",\n    VALVE_DN1400_OUT_FB_OPEN: \"valve\",\n    VALVE_DN1400_OUT_FB_CLOSE: \"valve\",\n    VALVE_DN900_FB_OPEN: \"valve\",\n    VALVE_DN900_FB_CLOSE: \"valve\",\n    VALVE_OPV_FB_OPEN: \"valve\",\n    VALVE_OPV_FB_CLOSE: \"valve\",\n    VALVE_OPV_ALARM: \"valve\",\n    VALVE_DN1400_IN_FILL_FB_OPEN: \"valve\",\n    VALVE_DN1400_IN_FILL_FB_CLOSE: \"valve\",\n    VALVE_DN1400_OUT_FILL_FB_OPEN: \"valve\",\n    VALVE_DN1400_OUT_FILL_FB_CLOSE: \"valve\",\n    VALVE_DN900_FILL_FB_OPEN: \"valve\",\n    VALVE_DN900_FILL_FB_CLOSE: \"valve\",\n    SYS_SHUTDOWN_ALARM: \"control\",\n    SYS_UPS_ALARM: \"control\"\n};\n\nvar lines = [];\nfor (var tag in simulated) {\n    var device = deviceMap[tag] || \"unknown\";\n    var val = simulated[tag];\n    lines.push(\"measurements,plant_id=hushan,tag_code=\" + tag + \",device_code=\" + device + \" value=\" + val);\n}\n\nmsg.payload = lines.join(\"\\n\");\nmsg.headers = {\n    \"Authorization\": \"Token UrXPX5bskMb-AwIKOm7k7AuLPVuxiSaIUd943uhHwrZcg2gbI4K7fsfWWMqyxTqJi5iFpGNstKQvHwmdkxxGfQ==\",\n    \"Content-Type\": \"text/plain\"\n};\nmsg.url = \"http://192.168.14.203:8086/api/v2/write?org=SCADA_hushan&bucket=demo_realtime&precision=ms\";\nreturn msg;\n",
         "outputs": 1,
         "timeout": "",
-        "noerr": 0,
+        "noerr": 3,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 430,
-        "y": 200,
-        "wires": [["demo_http", "demo_debug"]]
+        "x": 390,
+        "y": 160,
+        "wires": [
+            [
+                "demo_http",
+                "demo_debug"
+            ]
+        ]
     },
     {
         "id": "demo_http",
         "type": "http request",
-        "z": "",
+        "z": "b93569b146043fe0",
         "name": "寫入 InfluxDB",
         "method": "POST",
         "ret": "txt",
@@ -54,14 +69,18 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 700,
-        "y": 180,
-        "wires": [["demo_http_status"]]
+        "x": 660,
+        "y": 140,
+        "wires": [
+            [
+                "demo_http_status"
+            ]
+        ]
     },
     {
         "id": "demo_http_status",
         "type": "debug",
-        "z": "",
+        "z": "b93569b146043fe0",
         "name": "HTTP 回應",
         "active": true,
         "tosidebar": true,
@@ -71,14 +90,14 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 900,
-        "y": 180,
+        "x": 860,
+        "y": 140,
         "wires": []
     },
     {
         "id": "demo_debug",
         "type": "debug",
-        "z": "",
+        "z": "b93569b146043fe0",
         "name": "payload 確認",
         "active": true,
         "tosidebar": true,
@@ -88,8 +107,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 710,
-        "y": 260,
+        "x": 670,
+        "y": 220,
         "wires": []
     }
 ]

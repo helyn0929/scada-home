@@ -4,6 +4,8 @@ Demo Flask API（極簡版）
 """
 
 import os
+import logging
+from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -13,6 +15,27 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+
+# --- 日誌設定 ---
+os.makedirs("logs", exist_ok=True)
+file_handler = RotatingFileHandler(
+    "logs/flask.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+)
+file_handler.setFormatter(logging.Formatter(
+    "%(asctime)s [%(levelname)s] %(message)s"
+))
+file_handler.setLevel(logging.INFO)
+app.logger.addHandler(file_handler)
+app.logger.setLevel(logging.INFO)
+
+# influx_client 的 log 也寫進同一個檔
+logging.getLogger("influx_client").addHandler(file_handler)
+logging.getLogger("influx_client").setLevel(logging.INFO)
+
+app.logger.info("Flask 啟動")
+
+# InfluxDB 連線狀態（只在狀態變化時記 log）
+_influx_ok = True
 
 # 額定容量 (kW)，用於計算容量因數
 RATED_CAPACITY = 1500
@@ -60,7 +83,16 @@ VIBRATION_MAPPING = {
 @app.route("/api/view/home")
 def view_home():
     """scada-home 首頁需要的所有資料，一次給齊"""
+    global _influx_ok
     raw = get_all_latest_values()
+    if not raw:
+        if _influx_ok:
+            app.logger.warning("InfluxDB 回傳空資料，請確認連線與 Node-RED 是否正常")
+            _influx_ok = False
+    else:
+        if not _influx_ok:
+            app.logger.info("InfluxDB 資料恢復正常")
+            _influx_ok = True
 
     # 基本欄位轉換
     data = {}
@@ -114,6 +146,14 @@ def health():
 
 if __name__ == "__main__":
     port = int(os.getenv("FLASK_PORT", 5051))
-    print(f"Demo API 啟動: http://localhost:{port}")
-    print(f"首頁資料: http://localhost:{port}/api/view/home")
-    app.run(host="0.0.0.0", port=port, debug=True)
+    use_debug = os.getenv("FLASK_DEBUG", "0") == "1"
+
+    if use_debug:
+        # 開發模式（debug=True 方便看錯誤）
+        print(f"[DEV] API 啟動: http://localhost:{port}")
+        app.run(host="0.0.0.0", port=port, debug=True)
+    else:
+        # 正式模式（waitress，多執行緒穩定）
+        from waitress import serve
+        print(f"[PROD] API 啟動: http://0.0.0.0:{port}")
+        serve(app, host="0.0.0.0", port=port)

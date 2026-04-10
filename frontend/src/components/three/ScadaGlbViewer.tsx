@@ -1,0 +1,367 @@
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Bounds, OrbitControls, useGLTF } from "@react-three/drei";
+import * as THREE from "three";
+import { TURBINE_SCENE_PRESET_SEEDS } from "./turbineScenePresets";
+
+export type SavedGlbCameraView = {
+  position: [number, number, number];
+  target: [number, number, number];
+};
+
+function readPersistedView(key: string): SavedGlbCameraView | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const o = JSON.parse(raw) as unknown;
+    if (!o || typeof o !== "object") return null;
+    const p = (o as { position?: unknown; target?: unknown }).position;
+    const t = (o as { position?: unknown; target?: unknown }).target;
+    if (!Array.isArray(p) || !Array.isArray(t) || p.length !== 3 || t.length !== 3) {
+      return null;
+    }
+    const position: [number, number, number] = [
+      Number(p[0]),
+      Number(p[1]),
+      Number(p[2]),
+    ];
+    const target: [number, number, number] = [
+      Number(t[0]),
+      Number(t[1]),
+      Number(t[2]),
+    ];
+    if (position.some((n) => !Number.isFinite(n)) || target.some((n) => !Number.isFinite(n))) {
+      return null;
+    }
+    return { position, target };
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedView(key: string, view: SavedGlbCameraView) {
+  try {
+    localStorage.setItem(key, JSON.stringify(view));
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+type ScadaGlbViewerProps = {
+  /** Path under /public, e.g. "/assets/models/hushanturbine.glb" */
+  url: string;
+  className?: string;
+  /** Model scale multiplier (1 = original). */
+  scale?: number;
+  /** If true, auto-centers and auto-fits camera to model (cancels visual scaling). */
+  autoFit?: boolean;
+  /** Translate model in world units. +X = right, +Y = up, +Z = toward camera. */
+  modelPosition?: [number, number, number];
+  /**
+   * Camera position before fit; Bounds keeps the ray from `orbitTarget` → this point (which side / height you see).
+   * Tweak x/z to orbit around the model, y for higher/lower angle.
+   */
+  initialCameraPosition?: [number, number, number];
+  /** OrbitControls look-at; shift to center a specific part of the model. */
+  orbitTarget?: [number, number, number];
+  /** Bounds fit padding; lower = closer / larger on screen. */
+  fitMargin?: number;
+  /** Y-axis rotation of the model (radians), if the GLB export faces the wrong way. */
+  modelRotationY?: number;
+  /**
+   * After you drag-orbit and release, logs two lines you can paste into `HomeScreen`:
+   * `initialCameraPosition` and `orbitTarget`. Only the camera angle is captured (not model spin).
+   */
+  logViewAfterOrbit?: boolean;
+  /**
+   * Save camera + orbit target to `localStorage` on each orbit end; on load they override
+   * `initialCameraPosition` / `orbitTarget` and skip `Bounds` so the angle is not reset.
+   */
+  persistViewStorageKey?: string;
+  /** Optional hook when orbit ends (after optional persist + console log). */
+  onViewOrbitEnd?: (view: SavedGlbCameraView) => void;
+  /** When true, disables orbit, zoom, and pan so the camera stays fixed. */
+  viewLocked?: boolean;
+  /**
+   * When set, smoothly moves the camera to `cameraPresets[activeCameraPreset]` (merged with built-in seeds).
+   * Omit to disable preset-driven camera moves.
+   */
+  activeCameraPreset?: string | null;
+  /** Overrides / extends built-in `TURBINE_SCENE_PRESET_SEEDS` (stable reference recommended). */
+  cameraPresets?: Record<string, SavedGlbCameraView>;
+  /** Preset tween length in seconds. */
+  cameraPresetDurationSec?: number;
+};
+
+type OrbitControlsLike = {
+  object: { position: { x: number; y: number; z: number } };
+  target: { x: number; y: number; z: number };
+  addEventListener: (type: string, fn: () => void) => void;
+  removeEventListener: (type: string, fn: () => void) => void;
+};
+
+function snapshotFromControls(oc: OrbitControlsLike): SavedGlbCameraView {
+  const p = oc.object.position;
+  const t = oc.target;
+  return {
+    position: [p.x, p.y, p.z],
+    target: [t.x, t.y, t.z],
+  };
+}
+
+function OrbitViewCapture({
+  storageKey,
+  logToConsole,
+  onViewOrbitEnd,
+}: {
+  storageKey?: string;
+  logToConsole?: boolean;
+  onViewOrbitEnd?: (view: SavedGlbCameraView) => void;
+}) {
+  const controls = useThree((s) => s.controls);
+  const onEndRef = useRef(onViewOrbitEnd);
+  onEndRef.current = onViewOrbitEnd;
+
+  useEffect(() => {
+    if (!controls) return;
+    const oc = controls as unknown as OrbitControlsLike;
+    if (typeof oc.addEventListener !== "function") return;
+    const onEnd = () => {
+      const view = snapshotFromControls(oc);
+      if (storageKey) {
+        writePersistedView(storageKey, view);
+      }
+      if (logToConsole) {
+        const { position: pos, target: tgt } = view;
+        // eslint-disable-next-line no-console -- intentional dev UX: copy camera + target into props
+        console.log(
+          "[ScadaGlbViewer] Saved view" +
+            (storageKey ? ` (localStorage key: ${storageKey})` : "") +
+            ". Paste into HomeScreen constants or keep using persist key only:\n" +
+            `  initialCameraPosition={[${pos[0].toFixed(4)}, ${pos[1].toFixed(4)}, ${pos[2].toFixed(4)}]}\n` +
+            `  orbitTarget={[${tgt[0].toFixed(4)}, ${tgt[1].toFixed(4)}, ${tgt[2].toFixed(4)}]}`
+        );
+      }
+      onEndRef.current?.(view);
+    };
+    oc.addEventListener("end", onEnd);
+    return () => oc.removeEventListener("end", onEnd);
+  }, [controls, storageKey, logToConsole]);
+
+  return null;
+}
+
+type ControlsWithTarget = {
+  target: THREE.Vector3;
+  update: () => void;
+};
+
+function CameraPresetAnimator({
+  activeKey,
+  presets,
+  durationSec,
+}: {
+  activeKey: string;
+  presets: Record<string, SavedGlbCameraView>;
+  durationSec: number;
+}) {
+  const { camera, controls, invalidate } = useThree();
+  const presetsRef = useRef(presets);
+  presetsRef.current = presets;
+  const firstLayout = useRef(true);
+  const anim = useRef<{
+    t: number;
+    fP: THREE.Vector3;
+    tP: THREE.Vector3;
+    fT: THREE.Vector3;
+    tT: THREE.Vector3;
+  } | null>(null);
+
+  useEffect(() => {
+    if (firstLayout.current) {
+      firstLayout.current = false;
+      return;
+    }
+    const next = presetsRef.current[activeKey];
+    if (!next) return;
+    const oc = controls as unknown as ControlsWithTarget | null;
+    if (!oc?.target) return;
+    anim.current = {
+      t: 0,
+      fP: camera.position.clone(),
+      tP: new THREE.Vector3(...next.position),
+      fT: oc.target.clone(),
+      tT: new THREE.Vector3(...next.target),
+    };
+  }, [activeKey, camera, controls]);
+
+  useFrame((_, delta) => {
+    const a = anim.current;
+    if (!a) return;
+    a.t += delta / durationSec;
+    const k = Math.min(1, a.t);
+    const ease = 1 - (1 - k) ** 3;
+    camera.position.lerpVectors(a.fP, a.tP, ease);
+    const oc = controls as unknown as ControlsWithTarget;
+    oc.target.lerpVectors(a.fT, a.tT, ease);
+    oc.update();
+    invalidate();
+    if (k >= 1) anim.current = null;
+  });
+
+  return null;
+}
+
+function GlbModel({ url, scale }: { url: string; scale: number }) {
+  const { scene } = useGLTF(url);
+  // Clone so we can safely apply transforms without mutating cached GLTF scene.
+  const cloned = useMemo(() => scene.clone(true), [scene]);
+  return <primitive object={cloned} scale={scale} />;
+}
+
+export default function ScadaGlbViewer({
+  url,
+  className,
+  scale = 1,
+  autoFit = true,
+  modelPosition = [0, 0, 0],
+  initialCameraPosition = [-5, 1.12, 2.05],
+  orbitTarget = [0, 0, 0],
+  fitMargin = 0.52,
+  modelRotationY = 0,
+  logViewAfterOrbit = false,
+  persistViewStorageKey,
+  onViewOrbitEnd,
+  viewLocked = false,
+  activeCameraPreset = null,
+  cameraPresets,
+  cameraPresetDurationSec = 0.55,
+}: ScadaGlbViewerProps) {
+  const [persistedView, setPersistedView] = useState<SavedGlbCameraView | null>(() => {
+    if (typeof window === "undefined" || !persistViewStorageKey) return null;
+    return readPersistedView(persistViewStorageKey);
+  });
+
+  useEffect(() => {
+    if (!persistViewStorageKey) {
+      setPersistedView(null);
+      return;
+    }
+    setPersistedView(readPersistedView(persistViewStorageKey));
+  }, [persistViewStorageKey]);
+
+  const cameraPosition = persistedView?.position ?? initialCameraPosition;
+  const orbitTargetEffective = persistedView?.target ?? orbitTarget;
+  const useBoundsFit = autoFit && !persistedView;
+  /**
+   * Only pass `target` when it comes from persisted storage. Passing a fixed prop every
+   * re-render (e.g. [0,0,0]) makes drei reset OrbitControls — toggling `viewLocked` then
+   * snaps the camera. Without persistence, let controls own `target` after the first fit.
+   */
+  const presetMode = activeCameraPreset != null && activeCameraPreset !== "";
+  const mergedPresets = useMemo(
+    () => ({ ...TURBINE_SCENE_PRESET_SEEDS, ...cameraPresets }),
+    [cameraPresets]
+  );
+  /**
+   * While a non-default preset is active, avoid passing a fixed React `target` so it does not
+   * fight the animator. For `default` with persisted storage, keep syncing target from props.
+   */
+  const orbitTargetProp =
+    persistedView != null &&
+    (!presetMode || activeCameraPreset === "default")
+      ? ({ target: orbitTargetEffective } as const)
+      : ({} as { target?: [number, number, number] });
+
+  return (
+    <div
+      className={[
+        "rounded-[20px] bg-[#D9D9D9]/15 overflow-hidden touch-none select-none",
+        "shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]",
+        className ?? "",
+      ].join(" ")}
+    >
+      <Canvas
+        camera={{
+          position: cameraPosition,
+          fov: 50,
+          near: 0.01,
+          far: 2000,
+        }}
+        dpr={[1, 2]}
+        style={{ touchAction: "none" }}
+      >
+        <color attach="background" args={["#2c2c30"]} />
+        <ambientLight intensity={0.65} />
+        <directionalLight position={[-2.5, 4, 2]} intensity={1.15} />
+        {/* Before Bounds: clip() needs state.controls. Do not use Bounds observe — it refits and cancels orbit. */}
+        <OrbitControls
+          makeDefault
+          enablePan={false}
+          enableRotate={!viewLocked}
+          enableZoom={!viewLocked}
+          minDistance={0.08}
+          maxDistance={200}
+          minPolarAngle={0.35}
+          maxPolarAngle={Math.PI / 2 + 0.35}
+          {...orbitTargetProp}
+        />
+        {!viewLocked &&
+        (persistViewStorageKey || logViewAfterOrbit || onViewOrbitEnd) ? (
+          <OrbitViewCapture
+            storageKey={persistViewStorageKey}
+            logToConsole={logViewAfterOrbit}
+            onViewOrbitEnd={onViewOrbitEnd}
+          />
+        ) : null}
+        {presetMode && mergedPresets[activeCameraPreset!] ? (
+          <CameraPresetAnimator
+            activeKey={activeCameraPreset!}
+            presets={mergedPresets}
+            durationSec={cameraPresetDurationSec}
+          />
+        ) : null}
+        <Suspense
+          fallback={
+            <mesh>
+              <boxGeometry args={[1, 1, 1]} />
+              <meshStandardMaterial color="#06E2F4" wireframe />
+            </mesh>
+          }
+        >
+          {useBoundsFit ? (
+            <Bounds fit clip margin={fitMargin}>
+              <group
+                position={modelPosition}
+                rotation={[0, modelRotationY, 0]}
+              >
+                <GlbModel url={url} scale={scale} />
+              </group>
+            </Bounds>
+          ) : persistedView ? (
+            <group
+              position={modelPosition}
+              rotation={[0, modelRotationY, 0]}
+            >
+              <GlbModel url={url} scale={scale} />
+            </group>
+          ) : (
+            <group
+              position={[
+                modelPosition[0],
+                modelPosition[1] - 0.6,
+                modelPosition[2],
+              ]}
+              rotation={[0, modelRotationY, 0]}
+            >
+              <GlbModel url={url} scale={scale} />
+            </group>
+          )}
+        </Suspense>
+      </Canvas>
+    </div>
+  );
+}
+
+useGLTF.preload("/assets/models/hushanturbine.glb");
+

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import type { TurbineScenePresetId } from "@/components/three/turbineScenePresets";
 
 const NEEDLE_COLOR = "#06E2F4";
 const NEEDLE_COLOR_ALARM = "#FE0C0C";
@@ -9,6 +10,14 @@ const ALARM_SPEED_PCT_BELOW = 90;
 /** Wicket gate opening valid span 0–100%; outside → alarm (red) */
 const WICKET_OPEN_MIN = 0;
 const WICKET_OPEN_MAX = 100;
+
+// Gauge operating ranges (tuned so the needle moves within the arc)
+const WATER_FLOW_MIN = 0;
+const WATER_FLOW_MAX = 2.5;
+const GEN_RPM_MIN = 900;
+const GEN_RPM_MAX = 1200;
+const GEN_SPEED_PCT_MIN = 80;
+const GEN_SPEED_PCT_MAX = 120;
 
 /** Semicircular tick dial (84×52) — provided design */
 const DIAL_VIEWBOX = "0 0 84 52";
@@ -42,6 +51,7 @@ function TurbineGaugeDial({
   unit,
   formatValue,
   alarm,
+  onActivate,
 }: {
   value: number;
   min: number;
@@ -51,6 +61,7 @@ function TurbineGaugeDial({
   formatValue: (v: number) => string;
   /** When true, needle and reading use alarm red */
   alarm?: boolean;
+  onActivate?: () => void;
 }) {
   const clamped = clamp(value, min, max);
   const outOfRange = value < min || value > max;
@@ -66,8 +77,30 @@ function TurbineGaugeDial({
   const valueFill = alarmVisual ? NEEDLE_COLOR_ALARM : "#FFFFFF";
   const unitFill = alarmVisual ? "rgba(254,12,12,0.85)" : "rgba(255,255,255,0.78)";
 
+  const interactive = Boolean(onActivate);
+
   return (
-    <div className="flex min-h-0 w-full min-w-0 flex-col items-center justify-center gap-1">
+    <div
+      className={[
+        "flex min-h-0 w-full min-w-0 flex-col items-center justify-center gap-1",
+        interactive
+          ? "cursor-pointer rounded-md outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#06E2F4]"
+          : "",
+      ].join(" ")}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={interactive ? () => onActivate?.() : undefined}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onActivate?.();
+              }
+            }
+          : undefined
+      }
+    >
       <div className="flex h-[58px] w-[94px] shrink-0 items-center justify-center">
         <svg
           width={84}
@@ -137,16 +170,18 @@ function TurbineGaugeDial({
       <span className="max-w-[120px] text-center text-[12px] font-semibold leading-[15px] text-white">
         {label}
       </span>
-      {outOfRange ? (
-        <span className="text-[8px] font-bold leading-none text-[#FE0C0C]">
-          {value > max ? "HI" : "LO"}
-        </span>
-      ) : null}
     </div>
   );
 }
 
-export default function TurbineGeneratorGauges() {
+export type TurbineGaugeScene = Exclude<TurbineScenePresetId, "default">;
+
+export default function TurbineGeneratorGauges({
+  onFocusScene,
+}: {
+  /** Focus hydraulic (water / wicket) or generator (RPM / speed) in the 3D view. */
+  onFocusScene?: (scene: TurbineGaugeScene) => void;
+}) {
   const [waterCms, setWaterCms] = useState(1.2);
   const [wicketPct, setWicketPct] = useState(42);
   const [speedRpm, setSpeedRpm] = useState(720);
@@ -154,11 +189,11 @@ export default function TurbineGeneratorGauges() {
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      setWaterCms((v) => bump(v, 0, 3, 0.35));
+      setWaterCms((v) => bump(v, WATER_FLOW_MIN, WATER_FLOW_MAX, 0.25));
       /* Slightly wider mock span so >100% / <0% alarms can appear; live data replaces this */
       setWicketPct((v) => bump(v, -4, 104, 12));
-      setSpeedRpm((v) => bump(v, 0, 1200, 80));
-      setSpeedPct((v) => bump(v, 0, 200, 15));
+      setSpeedRpm((v) => bump(v, GEN_RPM_MIN - 80, GEN_RPM_MAX + 80, 45));
+      setSpeedPct((v) => bump(v, GEN_SPEED_PCT_MIN - 10, GEN_SPEED_PCT_MAX + 10, 4));
     }, UPDATE_MS);
     return () => window.clearInterval(id);
   }, []);
@@ -171,11 +206,14 @@ export default function TurbineGeneratorGauges() {
       <div className={pairClass}>
         <TurbineGaugeDial
           value={waterCms}
-          min={0}
-          max={3}
+          min={WATER_FLOW_MIN}
+          max={WATER_FLOW_MAX}
           label="Water flow"
           unit="cms"
           formatValue={(v) => v.toFixed(2)}
+          onActivate={
+            onFocusScene ? () => onFocusScene("hydraulic") : undefined
+          }
         />
         <TurbineGaugeDial
           value={wicketPct}
@@ -187,26 +225,35 @@ export default function TurbineGeneratorGauges() {
           alarm={
             wicketPct > WICKET_OPEN_MAX || wicketPct < WICKET_OPEN_MIN
           }
+          onActivate={
+            onFocusScene ? () => onFocusScene("hydraulic") : undefined
+          }
         />
       </div>
       <div className={pairClass}>
         <TurbineGaugeDial
           value={speedRpm}
-          min={0}
-          max={1200}
+          min={GEN_RPM_MIN}
+          max={GEN_RPM_MAX}
           label="Gen RPM"
           unit="rpm"
           formatValue={(v) => v.toFixed(0)}
           alarm={speedRpm < ALARM_RPM_BELOW}
+          onActivate={
+            onFocusScene ? () => onFocusScene("generator") : undefined
+          }
         />
         <TurbineGaugeDial
           value={speedPct}
-          min={0}
-          max={200}
+          min={GEN_SPEED_PCT_MIN}
+          max={GEN_SPEED_PCT_MAX}
           label="Gen speed"
           unit="%"
           formatValue={(v) => v.toFixed(0)}
           alarm={speedPct < ALARM_SPEED_PCT_BELOW}
+          onActivate={
+            onFocusScene ? () => onFocusScene("generator") : undefined
+          }
         />
       </div>
     </div>

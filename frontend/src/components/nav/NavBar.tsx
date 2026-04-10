@@ -27,7 +27,7 @@ export default function NavBar() {
   return (
     // Floating NavBar container
     <div className="fixed top-12 right-12 bg-white/15 backdrop-blur-md rounded-full px-8 py-8 flex flex-col items-center space-y-10 transform origin-top-right scale-50">
-      {navItems.map((item, index) => (
+      {navItems.map((item) => (
         <React.Fragment key={item.label}>
 
       {/* icon */}
@@ -35,7 +35,7 @@ export default function NavBar() {
         src={item.icon}
         alt={item.label}
         className="h-12 w-12 cursor-pointer hover:scale-110 transition"
-        onClick={handleClick(item.label)}
+        onClick={() => handleClick(item.label)}
       />
 
 

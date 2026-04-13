@@ -24,6 +24,8 @@ frontend/dist/
 frontend/.env
 frontend/.env.*
 frontend/*.local
+# Large GLB: keep locally or host via VITE_TURBINE_GLB_URL (not in git — GitHub 100MB limit)
+frontend/public/assets/models/*.glb
 
 # Backend (Python)
 backend/node_modules/

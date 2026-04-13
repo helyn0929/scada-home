@@ -2,6 +2,7 @@ import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Bounds, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { TURBINE_GLB_URL } from "@/config/turbineGltfUrl";
 import { TURBINE_SCENE_PRESET_SEEDS } from "./turbineScenePresets";
 
 export type SavedGlbCameraView = {
@@ -48,7 +49,7 @@ function writePersistedView(key: string, view: SavedGlbCameraView) {
 }
 
 type ScadaGlbViewerProps = {
-  /** Path under /public, e.g. "/assets/models/hushanturbine.glb" */
+  /** Absolute path under `/public` or full HTTPS URL (e.g. object storage). */
   url: string;
   className?: string;
   /** Model scale multiplier (1 = original). */
@@ -363,5 +364,5 @@ export default function ScadaGlbViewer({
   );
 }
 
-useGLTF.preload("/assets/models/hushanturbine.glb");
+useGLTF.preload(TURBINE_GLB_URL);
 

@@ -15,6 +15,7 @@ import WaterQualityTesting, {
   WaterQualityTestingTitle,
 } from "@/components/water/WaterQualityTesting"
 import ScadaGlbViewer from "@/components/three/ScadaGlbViewer"
+import { TURBINE_GLB_URL } from "@/config/turbineGltfUrl"
 import {
   TURBINE_SCENE_PRESET_SEEDS,
   type TurbineScenePresetId,
@@ -138,7 +139,7 @@ export default function HomeScreen() {
           <div className="pointer-events-none absolute left-[252px] top-[110px] z-[999]">
             <div className="pointer-events-auto">
               <ScadaGlbViewer
-                url="/assets/models/hushanturbine.glb"
+                url={TURBINE_GLB_URL}
                 className="h-[400px] w-[800px]"
                 autoFit
                 fitMargin={TURBINE_FIT_MARGIN}

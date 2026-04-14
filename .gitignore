@@ -25,10 +25,13 @@ frontend/.env
 frontend/.env.*
 frontend/*.local
 
-# Backend (Python)
+# Python
+__pycache__/
+*.pyc
+
+# Backend
 backend/node_modules/
 backend/venv/
-backend/__pycache__/
 backend/.env
 
 # Root debris (generic fallbacks)

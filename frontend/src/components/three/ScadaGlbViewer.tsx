@@ -2,51 +2,14 @@ import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Bounds, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { TURBINE_GLB_URL } from "@/config/turbineGltfUrl";
+import {
+  readTurbinePersistedView,
+  writeTurbinePersistedView,
+  type SavedGlbCameraView,
+} from "@/config/turbinePersistedCamera";
 import { TURBINE_SCENE_PRESET_SEEDS } from "./turbineScenePresets";
 
-export type SavedGlbCameraView = {
-  position: [number, number, number];
-  target: [number, number, number];
-};
-
-function readPersistedView(key: string): SavedGlbCameraView | null {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const o = JSON.parse(raw) as unknown;
-    if (!o || typeof o !== "object") return null;
-    const p = (o as { position?: unknown; target?: unknown }).position;
-    const t = (o as { position?: unknown; target?: unknown }).target;
-    if (!Array.isArray(p) || !Array.isArray(t) || p.length !== 3 || t.length !== 3) {
-      return null;
-    }
-    const position: [number, number, number] = [
-      Number(p[0]),
-      Number(p[1]),
-      Number(p[2]),
-    ];
-    const target: [number, number, number] = [
-      Number(t[0]),
-      Number(t[1]),
-      Number(t[2]),
-    ];
-    if (position.some((n) => !Number.isFinite(n)) || target.some((n) => !Number.isFinite(n))) {
-      return null;
-    }
-    return { position, target };
-  } catch {
-    return null;
-  }
-}
-
-function writePersistedView(key: string, view: SavedGlbCameraView) {
-  try {
-    localStorage.setItem(key, JSON.stringify(view));
-  } catch {
-    /* quota / private mode */
-  }
-}
+export type { SavedGlbCameraView };
 
 type ScadaGlbViewerProps = {
   /** Absolute path under `/public` or full HTTPS URL (e.g. object storage). */
@@ -75,10 +38,12 @@ type ScadaGlbViewerProps = {
    */
   logViewAfterOrbit?: boolean;
   /**
-   * Save camera + orbit target to `localStorage` on each orbit end; on load they override
-   * `initialCameraPosition` / `orbitTarget` and skip `Bounds` so the angle is not reset.
+   * Base key for `localStorage`; actual key is namespaced by `url` so each model keeps its own saved view.
+   * Legacy single-key entries are migrated once when still valid (see `turbinePersistedCamera.ts`).
    */
   persistViewStorageKey?: string;
+  /** When set, saved camera must match this string or it is ignored (e.g. tie to `modelPosition` + rotation). */
+  persistLayoutKey?: string;
   /** Optional hook when orbit ends (after optional persist + console log). */
   onViewOrbitEnd?: (view: SavedGlbCameraView) => void;
   /** When true, disables orbit, zoom, and pan so the camera stays fixed. */
@@ -111,11 +76,15 @@ function snapshotFromControls(oc: OrbitControlsLike): SavedGlbCameraView {
 }
 
 function OrbitViewCapture({
-  storageKey,
+  persistBaseKey,
+  modelUrl,
+  persistLayoutKey,
   logToConsole,
   onViewOrbitEnd,
 }: {
-  storageKey?: string;
+  persistBaseKey?: string;
+  modelUrl: string;
+  persistLayoutKey?: string;
   logToConsole?: boolean;
   onViewOrbitEnd?: (view: SavedGlbCameraView) => void;
 }) {
@@ -129,15 +98,15 @@ function OrbitViewCapture({
     if (typeof oc.addEventListener !== "function") return;
     const onEnd = () => {
       const view = snapshotFromControls(oc);
-      if (storageKey) {
-        writePersistedView(storageKey, view);
+      if (persistBaseKey) {
+        writeTurbinePersistedView(persistBaseKey, modelUrl, view, persistLayoutKey);
       }
       if (logToConsole) {
         const { position: pos, target: tgt } = view;
         // eslint-disable-next-line no-console -- intentional dev UX: copy camera + target into props
         console.log(
           "[ScadaGlbViewer] Saved view" +
-            (storageKey ? ` (localStorage key: ${storageKey})` : "") +
+            (persistBaseKey ? ` (base key: ${persistBaseKey}, namespaced by model URL)` : "") +
             ". Paste into HomeScreen constants or keep using persist key only:\n" +
             `  initialCameraPosition={[${pos[0].toFixed(4)}, ${pos[1].toFixed(4)}, ${pos[2].toFixed(4)}]}\n` +
             `  orbitTarget={[${tgt[0].toFixed(4)}, ${tgt[1].toFixed(4)}, ${tgt[2].toFixed(4)}]}`
@@ -147,7 +116,7 @@ function OrbitViewCapture({
     };
     oc.addEventListener("end", onEnd);
     return () => oc.removeEventListener("end", onEnd);
-  }, [controls, storageKey, logToConsole]);
+  }, [controls, persistBaseKey, modelUrl, persistLayoutKey, logToConsole]);
 
   return null;
 }
@@ -232,6 +201,7 @@ export default function ScadaGlbViewer({
   modelRotationY = 0,
   logViewAfterOrbit = false,
   persistViewStorageKey,
+  persistLayoutKey,
   onViewOrbitEnd,
   viewLocked = false,
   activeCameraPreset = null,
@@ -240,7 +210,7 @@ export default function ScadaGlbViewer({
 }: ScadaGlbViewerProps) {
   const [persistedView, setPersistedView] = useState<SavedGlbCameraView | null>(() => {
     if (typeof window === "undefined" || !persistViewStorageKey) return null;
-    return readPersistedView(persistViewStorageKey);
+    return readTurbinePersistedView(persistViewStorageKey, url, persistLayoutKey);
   });
 
   useEffect(() => {
@@ -248,8 +218,8 @@ export default function ScadaGlbViewer({
       setPersistedView(null);
       return;
     }
-    setPersistedView(readPersistedView(persistViewStorageKey));
-  }, [persistViewStorageKey]);
+    setPersistedView(readTurbinePersistedView(persistViewStorageKey, url, persistLayoutKey));
+  }, [persistViewStorageKey, url, persistLayoutKey]);
 
   const cameraPosition = persistedView?.position ?? initialCameraPosition;
   const orbitTargetEffective = persistedView?.target ?? orbitTarget;
@@ -286,8 +256,8 @@ export default function ScadaGlbViewer({
         camera={{
           position: cameraPosition,
           fov: 50,
-          near: 0.01,
-          far: 2000,
+          near: 0.1,
+          far: 10_000_000,
         }}
         dpr={[1, 2]}
         style={{ touchAction: "none" }}
@@ -301,8 +271,8 @@ export default function ScadaGlbViewer({
           enablePan={false}
           enableRotate={!viewLocked}
           enableZoom={!viewLocked}
-          minDistance={0.08}
-          maxDistance={200}
+          minDistance={0.001}
+          maxDistance={5_000_000}
           minPolarAngle={0.35}
           maxPolarAngle={Math.PI / 2 + 0.35}
           {...orbitTargetProp}
@@ -310,7 +280,9 @@ export default function ScadaGlbViewer({
         {!viewLocked &&
         (persistViewStorageKey || logViewAfterOrbit || onViewOrbitEnd) ? (
           <OrbitViewCapture
-            storageKey={persistViewStorageKey}
+            persistBaseKey={persistViewStorageKey}
+            modelUrl={url}
+            persistLayoutKey={persistLayoutKey}
             logToConsole={logViewAfterOrbit}
             onViewOrbitEnd={onViewOrbitEnd}
           />
@@ -339,22 +311,8 @@ export default function ScadaGlbViewer({
                 <GlbModel url={url} scale={scale} />
               </group>
             </Bounds>
-          ) : persistedView ? (
-            <group
-              position={modelPosition}
-              rotation={[0, modelRotationY, 0]}
-            >
-              <GlbModel url={url} scale={scale} />
-            </group>
           ) : (
-            <group
-              position={[
-                modelPosition[0],
-                modelPosition[1] - 0.6,
-                modelPosition[2],
-              ]}
-              rotation={[0, modelRotationY, 0]}
-            >
+            <group position={modelPosition} rotation={[0, modelRotationY, 0]}>
               <GlbModel url={url} scale={scale} />
             </group>
           )}
@@ -363,6 +321,4 @@ export default function ScadaGlbViewer({
     </div>
   );
 }
-
-useGLTF.preload(TURBINE_GLB_URL);
 

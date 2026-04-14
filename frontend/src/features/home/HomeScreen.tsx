@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import KpiCard from "@/components/kpi/KpiCard"
 import { useLiveTelemetry } from "../telemetry/useLiveTelemetry"
 import NavBar from "@/components/nav/NavBar"
@@ -15,6 +15,8 @@ import WaterQualityTesting, {
   WaterQualityTestingTitle,
 } from "@/components/water/WaterQualityTesting"
 import ScadaGlbViewer from "@/components/three/ScadaGlbViewer"
+import TurbineViewerErrorBoundary from "@/components/three/TurbineViewerErrorBoundary"
+import { readTurbinePersistedView } from "@/config/turbinePersistedCamera"
 import { TURBINE_GLB_URL } from "@/config/turbineGltfUrl"
 import {
   TURBINE_SCENE_PRESET_SEEDS,
@@ -27,62 +29,22 @@ import { MathUtils } from "three"
  * the browser stores position + target in localStorage and uses them on reload (overrides these).
  * Set `logViewAfterOrbit` on `<ScadaGlbViewer />` to print values to paste here if you want them in git.
  */
-const TURBINE_INITIAL_CAMERA: [number, number, number] = [-5, 1.12, 2.05]
-const TURBINE_ORBIT_TARGET: [number, number, number] = [0, 0, 0]
-const TURBINE_VIEW_STORAGE_KEY = "scada-home-turbine-camera"
-
-function readSavedTurbineViewForPresets():
-  | { position: [number, number, number]; target: [number, number, number] }
-  | null {
-  if (typeof localStorage === "undefined") return null
-  try {
-    const raw = localStorage.getItem(TURBINE_VIEW_STORAGE_KEY)
-    if (!raw) return null
-    const o = JSON.parse(raw) as { position?: unknown; target?: unknown }
-    const p = o.position
-    const t = o.target
-    if (!Array.isArray(p) || !Array.isArray(t) || p.length !== 3 || t.length !== 3) {
-      return null
-    }
-    const position: [number, number, number] = [
-      Number(p[0]),
-      Number(p[1]),
-      Number(p[2]),
-    ]
-    const target: [number, number, number] = [
-      Number(t[0]),
-      Number(t[1]),
-      Number(t[2]),
-    ]
-    if (position.some((n) => !Number.isFinite(n)) || target.some((n) => !Number.isFinite(n))) {
-      return null
-    }
-    return { position, target }
-  } catch {
-    return null
-  }
-}
-
-/** Merged camera views for gauge-driven presets; `default` prefers saved localStorage view. */
-const TURBINE_CAMERA_PRESETS: Record<
-  TurbineScenePresetId,
-  { position: [number, number, number]; target: [number, number, number] }
-> = {
-  ...TURBINE_SCENE_PRESET_SEEDS,
-  default:
-    readSavedTurbineViewForPresets() ?? {
-      position: TURBINE_INITIAL_CAMERA,
-      target: TURBINE_ORBIT_TARGET,
-    },
-}
-
-/** Set `true` when the camera angle is final — disables mouse orbit and zoom on the 3D viewer. */
-const TURBINE_VIEW_LOCKED = true
+const TURBINE_MODEL_POSITION: [number, number, number] = [-12, 9, 10]
 /**
  * World +Y up: positive rotation.y is CCW from above; clockwise 270° → -270°.
  * If it still looks unchanged, the mesh may be symmetric around Y — try -90 or +90 to verify.
  */
 const TURBINE_MODEL_ROTATION_Y = MathUtils.degToRad(-270)
+/** Invalidates saved orbit when `modelPosition` / rotation change (see `turbinePersistedCamera.ts`). */
+const TURBINE_PERSIST_LAYOUT_KEY = `${TURBINE_MODEL_POSITION.join(",")}|${TURBINE_MODEL_ROTATION_Y}`
+/** Seed camera when nothing valid is in localStorage; nudged +X with `TURBINE_MODEL_POSITION`. */
+const TURBINE_INITIAL_CAMERA: [number, number, number] = [-4, 1.12, 2.05]
+const TURBINE_ORBIT_TARGET: [number, number, number] = [1, 0, 0]
+/** Bump to drop bad saved cameras; composite key is derived from this + model URL. */
+const TURBINE_VIEW_STORAGE_KEY = "scada-home-turbine-camera-v3"
+
+/** Freeze everything: lock orbit + zoom, and don't animate presets. */
+const TURBINE_VIEW_LOCKED = true
 /** Bounds padding; smaller = camera closer / model larger in the frame. */
 const TURBINE_FIT_MARGIN = 0.22
 
@@ -97,6 +59,26 @@ export default function HomeScreen() {
   const data = useLiveTelemetry("/api/telemetry");
   const [turbineScenePreset, setTurbineScenePreset] =
     useState<TurbineScenePresetId>("default");
+
+  /** `default` uses the same persisted view as `ScadaGlbViewer` (per model URL). */
+  const turbineCameraPresets = useMemo(
+    (): Record<
+      TurbineScenePresetId,
+      { position: [number, number, number]; target: [number, number, number] }
+    > => ({
+      ...TURBINE_SCENE_PRESET_SEEDS,
+      default:
+        readTurbinePersistedView(
+          TURBINE_VIEW_STORAGE_KEY,
+          TURBINE_GLB_URL,
+          TURBINE_PERSIST_LAYOUT_KEY
+        ) ?? {
+          position: TURBINE_INITIAL_CAMERA,
+          target: TURBINE_ORBIT_TARGET,
+        },
+    }),
+    [TURBINE_GLB_URL]
+  );
 
   const focusGaugeScene = useCallback((scene: TurbineGaugeScene) => {
     setTurbineScenePreset((prev) => (prev === scene ? "default" : scene));
@@ -137,21 +119,27 @@ export default function HomeScreen() {
 
           {/* 3D sector: positioned to the right without affecting KPI layout */}
           <div className="pointer-events-none absolute left-[252px] top-[110px] z-[999]">
-            <div className="pointer-events-auto">
-              <ScadaGlbViewer
-                url={TURBINE_GLB_URL}
-                className="h-[400px] w-[800px]"
-                autoFit
-                fitMargin={TURBINE_FIT_MARGIN}
-                initialCameraPosition={TURBINE_INITIAL_CAMERA}
-                orbitTarget={TURBINE_ORBIT_TARGET}
-                persistViewStorageKey={TURBINE_VIEW_STORAGE_KEY}
-                viewLocked={TURBINE_VIEW_LOCKED}
-                activeCameraPreset={turbineScenePreset}
-                cameraPresets={TURBINE_CAMERA_PRESETS}
-                modelPosition={[0, 0, 6]}
-                modelRotationY={TURBINE_MODEL_ROTATION_Y}
-              />
+            <div className="pointer-events-auto h-[400px] w-[800px]">
+              <TurbineViewerErrorBoundary
+                modelUrl={TURBINE_GLB_URL}
+                className="h-full w-full"
+              >
+                <ScadaGlbViewer
+                  url={TURBINE_GLB_URL}
+                  className="h-full w-full"
+                  autoFit
+                  fitMargin={TURBINE_FIT_MARGIN}
+                  initialCameraPosition={TURBINE_INITIAL_CAMERA}
+                  orbitTarget={TURBINE_ORBIT_TARGET}
+                  persistViewStorageKey={TURBINE_VIEW_STORAGE_KEY}
+                  persistLayoutKey={TURBINE_PERSIST_LAYOUT_KEY}
+                  viewLocked={TURBINE_VIEW_LOCKED}
+                  activeCameraPreset={null}
+                  cameraPresets={turbineCameraPresets}
+                  modelPosition={TURBINE_MODEL_POSITION}
+                  modelRotationY={TURBINE_MODEL_ROTATION_Y}
+                />
+              </TurbineViewerErrorBoundary>
             </div>
           </div>
 

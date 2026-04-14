@@ -9,6 +9,7 @@ set PYTHON=C:\Python312\python.exe
 set NODE=C:\Program Files\nodejs\node.exe
 set NODERED=%APPDATA%\npm\node_modules\node-red\red.js
 set BACKEND=C:\scada-home\backend
+set DASH=C:\scada-home\dash-history
 
 REM --- Flask API ---
 %NSSM% install scada-flask "%PYTHON%" "%BACKEND%\app.py"
@@ -20,6 +21,16 @@ REM --- Flask API ---
 %NSSM% set scada-flask Description "SCADA Home - Flask API"
 %NSSM% start scada-flask
 
+REM --- Dash 歷史查詢 ---
+%NSSM% install scada-dash "%PYTHON%" "%DASH%\app_blocks.py"
+%NSSM% set scada-dash AppDirectory "%DASH%"
+%NSSM% set scada-dash AppExit Default Restart
+%NSSM% set scada-dash AppRestartDelay 5000
+%NSSM% set scada-dash AppStdout "%BACKEND%\logs\dash-stdout.log"
+%NSSM% set scada-dash AppStderr "%BACKEND%\logs\dash-stderr.log"
+%NSSM% set scada-dash Description "SCADA Home - Dash History"
+%NSSM% start scada-dash
+
 REM --- Node-RED ---
 %NSSM% install scada-nodered "%NODE%" "%NODERED%"
 %NSSM% set scada-nodered AppExit Default Restart
@@ -29,6 +40,6 @@ REM --- Node-RED ---
 
 echo.
 echo === 服務註冊完成 ===
-echo 可在「服務」管理員中查看：scada-flask、scada-nodered
+echo 可在「服務」管理員中查看：scada-flask、scada-dash、scada-nodered
 echo InfluxDB 和 nginx 安裝時已自動註冊為服務
 pause

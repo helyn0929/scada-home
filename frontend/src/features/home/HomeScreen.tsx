@@ -44,10 +44,11 @@ export default function HomeScreen() {
       <div className="min-h-dvh overflow-x-auto overflow-y-auto bg-black text-white">
         <div className="p-6 flex flex-col gap-6 items-start shrink-0 w-max">
         {/* Title */}
-        <h1 className="text-4xl font-bold">
-          <span className="text-blue-500">AES</span>{" "}
-          <span className="text-red-500">Mega</span>
-        </h1>
+        <img
+          src="/assets/aesmegalogo.png"
+          alt="AES Mega"
+          className="h-12"
+        />
 
         {/* Main layout: KPIs, then Valve + Power row and Noise | Temperature | Vibration row */}
         <div className="flex flex-col gap-4 items-start w-full max-w-full">

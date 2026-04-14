@@ -16,7 +16,7 @@ load_dotenv()
 INFLUX_URL = os.getenv("INFLUX_URL")
 INFLUX_TOKEN = os.getenv("INFLUX_TOKEN")
 INFLUX_ORG = os.getenv("INFLUX_ORG")
-INFLUX_BUCKET = os.getenv("INFLUX_BUCKET", "demo_realtime")
+INFLUX_BUCKET = os.getenv("INFLUX_BUCKET", "real_time_data")
 PLANT_ID = os.getenv("PLANT_ID", "hushan")
 
 LATEST_VALUE_RANGE = "1m"

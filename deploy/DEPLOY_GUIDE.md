@@ -7,11 +7,14 @@
     ↓ http://現場電腦IP
   nginx (:80)
     ├── /          → 前端靜態檔 (dist/)
-    └── /api/      → 轉發到 Flask (:5051)
+    ├── /api/      → 轉發到 Flask (:5051)
+    └── /history/  → 轉發到 Dash  (:8050)
 
-Flask (:5051) ← 查詢 → InfluxDB (:8086)
+Flask (:5051) ← 查詢 → InfluxDB (:8086)  ← real_time_data
+Dash  (:8050) ← 查詢 → InfluxDB (:8086)  ← real_time_data + aggregated_data
 Node-RED      ← 寫入 → InfluxDB (:8086)
 PLC (DB74)    → Node-RED
+hourly_aggregation_task (排程) → InfluxDB (:8086)
 ```
 
 所有東西都跑在同一台 Windows 電腦上。
@@ -78,8 +81,9 @@ npm install -g node-red
 2. 執行 `influxd.exe` 啟動
 3. 開瀏覽器 `http://localhost:8086`，完成初始設定：
    - Organization: `SCADA_hushan`
-   - Bucket: `demo_realtime`
+   - Bucket: `real_time_data`（7 天 retention）
    - 記下產生的 Token
+4. 再手動建立第二個 Bucket：`aggregated_data`（retention: 永久 / 0）
 4. 把 InfluxDB 註冊為 Windows 服務：
 ```bash
 # 以管理員身分執行
@@ -102,7 +106,8 @@ xcopy /E /I 隨身碟\scada-home C:\scada-home
 INFLUX_URL=http://localhost:8086
 INFLUX_TOKEN=（貼上你在 Step 4 拿到的 token）
 INFLUX_ORG=SCADA_hushan
-INFLUX_BUCKET=demo_realtime
+INFLUX_BUCKET=real_time_data
+INFLUX_BUCKET_AGGREGATED=aggregated_data
 FLASK_PORT=5051
 FLASK_DEBUG=0
 PLANT_ID=hushan
@@ -113,12 +118,23 @@ PLANT_ID=hushan
 ```bash
 cd C:\scada-home\backend
 pip install -r requirements.txt
+
+cd C:\scada-home\dash-history
+pip install -r requirements.txt
 ```
 
 驗證 Flask 能跑：
 ```bash
+cd C:\scada-home\backend
 python app.py
 # 看到 [PROD] API 啟動 就對了，Ctrl+C 關掉
+```
+
+驗證 Dash 能跑：
+```bash
+cd C:\scada-home\dash-history
+python app_blocks.py
+# 開瀏覽器 http://localhost:8050 看到頁面就對了，Ctrl+C 關掉
 ```
 
 ### Step 8：設定 nginx
@@ -150,6 +166,7 @@ start nginx
 3. 執行前先檢查 `.bat` 裡的路徑是否正確（Python、Node、backend 位置）
 4. 完成後打開 Windows「服務」管理員，確認以下服務都是「執行中」：
    - `scada-flask`
+   - `scada-dash`
    - `scada-nodered`
    - `influxdb`
 
@@ -162,6 +179,52 @@ C:\tools\nssm\nssm.exe install scada-nginx "C:\nginx\nginx.exe"
 C:\tools\nssm\nssm.exe set scada-nginx AppDirectory "C:\nginx"
 C:\tools\nssm\nssm.exe start scada-nginx
 ```
+
+### Step 11b：設定小時聚合排程
+
+聚合任務每小時把 5 秒原始資料壓縮成小時統計，供歷史查詢頁使用。
+
+**先手動測試一次：**
+```bash
+cd C:\scada-home\backend
+python scripts\hourly_aggregation_task.py
+# 看到「聚合完成」代表 InfluxDB 連線正常
+```
+
+**用 Windows 工作排程器設定每小時自動執行：**
+
+1. 開始功能表 → 搜尋「工作排程器」→ 開啟
+2. 右側點「**建立工作**」（不是「建立基本工作」）
+3. **一般** 頁籤：
+   - 名稱：`scada-hourly-aggregation`
+   - 勾選「**不論使用者是否登入都要執行**」
+   - 勾選「以最高權限執行」
+4. **觸發程序** 頁籤 → 新增：
+   - 開始工作：**依照排程**
+   - 設定：**每天**
+   - 開始時間：`00:05`（整點後 5 分鐘，確保資料寫入完畢）
+   - 勾選「**重複工作，間隔：1 小時**」
+   - 持續時間：**無限期**
+5. **動作** 頁籤 → 新增：
+   - 動作：**啟動程式**
+   - 程式：`C:\Python312\python.exe`
+   - 新增引數：`scripts\hourly_aggregation_task.py`
+   - 起始於：`C:\scada-home\backend`
+6. **條件** 頁籤：取消勾選「只有電腦使用 AC 電源時才啟動」
+7. 確定 → 輸入 Windows 帳號密碼
+
+**驗證設定是否成功：**
+```bash
+# 在工作排程器右側點「執行」立即觸發一次
+# 或在 cmd 執行：
+schtasks /run /tn "scada-hourly-aggregation"
+
+# 查看執行結果：
+schtasks /query /tn "scada-hourly-aggregation" /fo list
+```
+
+> **注意**：如果現場電腦有設定自動休眠，需要關掉，否則排程任務不會執行。
+> 控制台 → 電源選項 → 「讓電腦進入睡眠狀態」設為「從不」
 
 ### Step 12：安裝 AnyDesk（遠端存取）
 
@@ -339,7 +402,8 @@ sc stop scada-flask && sc start scada-flask
 
 | Port | 服務 | 對外？ |
 |------|------|--------|
-| 80 | nginx（前端 + API 代理） | 是（使用者用這個） |
+| 80 | nginx（前端 + API + 歷史查詢代理） | 是（使用者用這個） |
 | 1880 | Node-RED | 是（管理介面） |
 | 5051 | Flask API | 否（nginx 代理） |
+| 8050 | Dash 歷史查詢 | 否（nginx 代理） |
 | 8086 | InfluxDB | 否（內部使用） |

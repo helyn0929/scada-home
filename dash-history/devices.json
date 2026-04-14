@@ -1,0 +1,10 @@
+[
+  {"device_code": "turbine",     "name_zh": "水輪機"},
+  {"device_code": "generator",   "name_zh": "發電機"},
+  {"device_code": "valve",       "name_zh": "閥件"},
+  {"device_code": "electrical",  "name_zh": "電氣"},
+  {"device_code": "hpu",         "name_zh": "HPU液壓"},
+  {"device_code": "environment", "name_zh": "環境"},
+  {"device_code": "control",     "name_zh": "控制"},
+  {"device_code": "general",     "name_zh": "綜合"}
+]

@@ -25,7 +25,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       host: true,
-      strictPort: true,
+      /** If 5173 is taken (leftover dev server), try 5174, … instead of failing. */
+      strictPort: false,
       proxy,
       watch: {
         // Default: use native FS events (lower CPU).

@@ -1,6 +1,6 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Bounds, OrbitControls, useGLTF } from "@react-three/drei";
+import { Bounds, Center, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import {
   readTurbinePersistedView,
@@ -17,6 +17,8 @@ type ScadaGlbViewerProps = {
   className?: string;
   /** Model scale multiplier (1 = original). */
   scale?: number;
+  /** Camera vertical field of view in degrees. Smaller = more zoom. */
+  cameraFov?: number;
   /** If true, auto-centers and auto-fits camera to model (cancels visual scaling). */
   autoFit?: boolean;
   /** Translate model in world units. +X = right, +Y = up, +Z = toward camera. */
@@ -81,21 +83,55 @@ function OrbitViewCapture({
   persistLayoutKey,
   logToConsole,
   onViewOrbitEnd,
+  captureOnMount,
+  onCaptured,
 }: {
   persistBaseKey?: string;
   modelUrl: string;
   persistLayoutKey?: string;
   logToConsole?: boolean;
   onViewOrbitEnd?: (view: SavedGlbCameraView) => void;
+  /** When true, captures and persists once as soon as controls are ready. */
+  captureOnMount?: boolean;
+  /** Called whenever a view is captured (end event or mount capture). */
+  onCaptured?: (view: SavedGlbCameraView) => void;
 }) {
   const controls = useThree((s) => s.controls);
   const onEndRef = useRef(onViewOrbitEnd);
   onEndRef.current = onViewOrbitEnd;
+  const onCapturedRef = useRef(onCaptured);
+  onCapturedRef.current = onCaptured;
+  const didMountCapture = useRef(false);
 
   useEffect(() => {
     if (!controls) return;
     const oc = controls as unknown as OrbitControlsLike;
     if (typeof oc.addEventListener !== "function") return;
+
+    if (captureOnMount && !didMountCapture.current) {
+      didMountCapture.current = true;
+      // Defer one tick so other initializers (e.g. Bounds fit) can move the camera first.
+      setTimeout(() => {
+        const view = snapshotFromControls(oc);
+        if (persistBaseKey) {
+          writeTurbinePersistedView(persistBaseKey, modelUrl, view, persistLayoutKey);
+        }
+        if (logToConsole) {
+          const { position: pos, target: tgt } = view;
+          // eslint-disable-next-line no-console -- intentional dev UX: copy camera + target into props
+          console.log(
+            "[ScadaGlbViewer] Saved view" +
+              (persistBaseKey ? ` (base key: ${persistBaseKey}, namespaced by model URL)` : "") +
+              ". Paste into HomeScreen constants or keep using persist key only:\n" +
+              `  initialCameraPosition={[${pos[0].toFixed(4)}, ${pos[1].toFixed(4)}, ${pos[2].toFixed(4)}]}\n` +
+              `  orbitTarget={[${tgt[0].toFixed(4)}, ${tgt[1].toFixed(4)}, ${tgt[2].toFixed(4)}]}`
+          );
+        }
+        onCapturedRef.current?.(view);
+        onEndRef.current?.(view);
+      }, 0);
+    }
+
     const onEnd = () => {
       const view = snapshotFromControls(oc);
       if (persistBaseKey) {
@@ -112,6 +148,7 @@ function OrbitViewCapture({
             `  orbitTarget={[${tgt[0].toFixed(4)}, ${tgt[1].toFixed(4)}, ${tgt[2].toFixed(4)}]}`
         );
       }
+      onCapturedRef.current?.(view);
       onEndRef.current?.(view);
     };
     oc.addEventListener("end", onEnd);
@@ -193,6 +230,7 @@ export default function ScadaGlbViewer({
   url,
   className,
   scale = 1,
+  cameraFov = 35,
   autoFit = true,
   modelPosition = [0, 0, 0],
   initialCameraPosition = [-5, 1.12, 2.05],
@@ -208,6 +246,13 @@ export default function ScadaGlbViewer({
   cameraPresets,
   cameraPresetDurationSec = 0.55,
 }: ScadaGlbViewerProps) {
+  const boundsKey = useMemo(() => {
+    // Remount Bounds to refit when seed view/layout changes.
+    const seed = initialCameraPosition.join(",");
+    const pos = modelPosition.join(",");
+    return `bounds:${url}:${fitMargin}:${seed}:${orbitTarget.join(",")}:${pos}:${modelRotationY}:${scale}`;
+  }, [url, fitMargin, initialCameraPosition, orbitTarget, modelPosition, modelRotationY, scale]);
+
   const [persistedView, setPersistedView] = useState<SavedGlbCameraView | null>(() => {
     if (typeof window === "undefined" || !persistViewStorageKey) return null;
     return readTurbinePersistedView(persistViewStorageKey, url, persistLayoutKey);
@@ -238,11 +283,13 @@ export default function ScadaGlbViewer({
    * While a non-default preset is active, avoid passing a fixed React `target` so it does not
    * fight the animator. For `default` with persisted storage, keep syncing target from props.
    */
-  const orbitTargetProp =
-    persistedView != null &&
-    (!presetMode || activeCameraPreset === "default")
-      ? ({ target: orbitTargetEffective } as const)
-      : ({} as { target?: [number, number, number] });
+  const shouldForceTarget =
+    persistedView != null ||
+    (!autoFit && (!presetMode || activeCameraPreset === "default"));
+  const orbitTargetProp = shouldForceTarget
+    ? ({ target: orbitTargetEffective } as const)
+    : ({} as { target?: [number, number, number] });
+  const captureOnMount = Boolean(persistViewStorageKey) && persistedView == null;
 
   return (
     <div
@@ -255,16 +302,18 @@ export default function ScadaGlbViewer({
       <Canvas
         camera={{
           position: cameraPosition,
-          fov: 50,
+          fov: cameraFov,
           near: 0.1,
           far: 10_000_000,
         }}
+        gl={{ antialias: true, logarithmicDepthBuffer: true }}
         dpr={[1, 2]}
         style={{ touchAction: "none" }}
       >
+        <CameraFovSync fov={cameraFov} />
         <color attach="background" args={["#2c2c30"]} />
-        <ambientLight intensity={0.65} />
-        <directionalLight position={[-2.5, 4, 2]} intensity={1.15} />
+        <ambientLight intensity={1.0} />
+        <directionalLight position={[-2.5, 4, 2]} intensity={1.6} />
         {/* Before Bounds: clip() needs state.controls. Do not use Bounds observe — it refits and cancels orbit. */}
         <OrbitControls
           makeDefault
@@ -273,18 +322,19 @@ export default function ScadaGlbViewer({
           enableZoom={!viewLocked}
           minDistance={0.001}
           maxDistance={5_000_000}
-          minPolarAngle={0.35}
-          maxPolarAngle={Math.PI / 2 + 0.35}
+          minPolarAngle={0.05}
+          maxPolarAngle={Math.PI - 0.05}
           {...orbitTargetProp}
         />
-        {!viewLocked &&
-        (persistViewStorageKey || logViewAfterOrbit || onViewOrbitEnd) ? (
+        {persistViewStorageKey || logViewAfterOrbit || onViewOrbitEnd ? (
           <OrbitViewCapture
             persistBaseKey={persistViewStorageKey}
             modelUrl={url}
             persistLayoutKey={persistLayoutKey}
             logToConsole={logViewAfterOrbit}
             onViewOrbitEnd={onViewOrbitEnd}
+            captureOnMount={captureOnMount}
+            onCaptured={setPersistedView}
           />
         ) : null}
         {presetMode && mergedPresets[activeCameraPreset!] ? (
@@ -303,22 +353,40 @@ export default function ScadaGlbViewer({
           }
         >
           {useBoundsFit ? (
-            <Bounds fit clip margin={fitMargin}>
+            <Bounds key={boundsKey} fit margin={fitMargin} clip={false}>
               <group
                 position={modelPosition}
                 rotation={[0, modelRotationY, 0]}
               >
-                <GlbModel url={url} scale={scale} />
+                <Center>
+                  <GlbModel url={url} scale={scale} />
+                </Center>
               </group>
             </Bounds>
           ) : (
             <group position={modelPosition} rotation={[0, modelRotationY, 0]}>
-              <GlbModel url={url} scale={scale} />
+              <Center>
+                <GlbModel url={url} scale={scale} />
+              </Center>
             </group>
           )}
         </Suspense>
       </Canvas>
     </div>
   );
+}
+
+function CameraFovSync({ fov }: { fov: number }) {
+  const camera = useThree((s) => s.camera);
+  useEffect(() => {
+    if (!camera) return;
+    if ("fov" in camera) {
+      // @ts-expect-error -- r3f camera can be PerspectiveCamera; keep runtime-guarded
+      camera.fov = fov;
+      // @ts-expect-error -- runtime camera guard
+      camera.updateProjectionMatrix?.();
+    }
+  }, [camera, fov]);
+  return null;
 }
 

@@ -16,7 +16,6 @@ import WaterQualityTesting, {
 } from "@/components/water/WaterQualityTesting"
 import ScadaGlbViewer from "@/components/three/ScadaGlbViewer"
 import TurbineViewerErrorBoundary from "@/components/three/TurbineViewerErrorBoundary"
-import { readTurbinePersistedView } from "@/config/turbinePersistedCamera"
 import { TURBINE_GLB_URL } from "@/config/turbineGltfUrl"
 import {
   TURBINE_SCENE_PRESET_SEEDS,
@@ -24,29 +23,55 @@ import {
 } from "@/components/three/turbineScenePresets"
 import { MathUtils } from "three"
 
+type Vector3Tuple = [number, number, number]
+
+function vecAdd(a: Vector3Tuple, b: Vector3Tuple): Vector3Tuple {
+  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
+}
+
 /**
- * Defaults when no saved view exists. After you orbit once with `persistViewStorageKey` set,
- * the browser stores position + target in localStorage and uses them on reload (overrides these).
- * Set `logViewAfterOrbit` on `<ScadaGlbViewer />` to print values to paste here if you want them in git.
+ * Model placement in world space. Framing uses explicit orbit + camera ray (no localStorage).
  */
-const TURBINE_MODEL_POSITION: [number, number, number] = [-12, 9, 10]
+const TURBINE_MODEL_POSITION: Vector3Tuple = [-12, 9, 10]
 /**
  * World +Y up: positive rotation.y is CCW from above; clockwise 270° → -270°.
  * If it still looks unchanged, the mesh may be symmetric around Y — try -90 or +90 to verify.
  */
 const TURBINE_MODEL_ROTATION_Y = MathUtils.degToRad(-270)
-/** Invalidates saved orbit when `modelPosition` / rotation change (see `turbinePersistedCamera.ts`). */
-const TURBINE_PERSIST_LAYOUT_KEY = `${TURBINE_MODEL_POSITION.join(",")}|${TURBINE_MODEL_ROTATION_Y}`
-/** Seed camera when nothing valid is in localStorage; nudged +X with `TURBINE_MODEL_POSITION`. */
-const TURBINE_INITIAL_CAMERA: [number, number, number] = [-4, 1.12, 2.05]
-const TURBINE_ORBIT_TARGET: [number, number, number] = [1, 0, 0]
-/** Bump to drop bad saved cameras; composite key is derived from this + model URL. */
-const TURBINE_VIEW_STORAGE_KEY = "scada-home-turbine-camera-v3"
 
-/** Freeze everything: lock orbit + zoom, and don't animate presets. */
+/**
+ * Shift look-at from the model origin if the GLB’s geometry is offset from its pivot.
+ * World space; added to `TURBINE_MODEL_POSITION` for `TURBINE_ORBIT_TARGET`.
+ */
+const TURBINE_ORBIT_CENTER_OFFSET: Vector3Tuple = [0, 0, 0]
+/** OrbitControls look-at (world) — aim near your model; tweak if the mesh sits off the pivot. */
+const TURBINE_ORBIT_TARGET: Vector3Tuple = vecAdd(TURBINE_MODEL_POSITION, TURBINE_ORBIT_CENTER_OFFSET)
+
+/**
+ * Fixed camera (world) for a consistent view on every load.
+ * With `TURBINE_AUTO_FIT = false`, this position is used as-is (no auto-framing).
+ */
+// Baseline seed direction (Bounds will choose the correct distance).
+const TURBINE_INITIAL_CAMERA: Vector3Tuple = [10, 22, 32]
+
+/**
+ * Uniform scale on the GLB (1 = file units). With `TURBINE_AUTO_FIT`, Bounds still frames the mesh.
+ */
+const TURBINE_MODEL_SCALE = 1
+
+/**
+ * When true, drei `Bounds` fits the camera to the model (fixes “can’t see” for huge GLBs).
+ * Set false to use only `TURBINE_INITIAL_CAMERA` / `TURBINE_ORBIT_TARGET` / distance below.
+ */
+const TURBINE_AUTO_FIT = true
+
+/** Set `true` to log `initialCameraPosition` / `orbitTarget` after each orbit end (unlock view). */
+const TURBINE_DEBUG_LOG_ORBIT = false
+
+/** Freeze orbit/zoom; set `false` while tuning or when `TURBINE_DEBUG_LOG_ORBIT` is on. */
 const TURBINE_VIEW_LOCKED = true
-/** Bounds padding; smaller = camera closer / model larger in the frame. */
-const TURBINE_FIT_MARGIN = 0.22
+/** Bounds padding; larger = farther / safer; start at viewer default. */
+const TURBINE_FIT_MARGIN = 0.52
 
 function format1Decimal(value: number | undefined | null) {
   if (value === undefined || value === null || Number.isNaN(value)) {
@@ -60,24 +85,19 @@ export default function HomeScreen() {
   const [turbineScenePreset, setTurbineScenePreset] =
     useState<TurbineScenePresetId>("default");
 
-  /** `default` uses the same persisted view as `ScadaGlbViewer` (per model URL). */
+  /** `default` preset matches fixed camera (no localStorage). */
   const turbineCameraPresets = useMemo(
     (): Record<
       TurbineScenePresetId,
       { position: [number, number, number]; target: [number, number, number] }
     > => ({
       ...TURBINE_SCENE_PRESET_SEEDS,
-      default:
-        readTurbinePersistedView(
-          TURBINE_VIEW_STORAGE_KEY,
-          TURBINE_GLB_URL,
-          TURBINE_PERSIST_LAYOUT_KEY
-        ) ?? {
-          position: TURBINE_INITIAL_CAMERA,
-          target: TURBINE_ORBIT_TARGET,
-        },
+      default: {
+        position: TURBINE_INITIAL_CAMERA,
+        target: TURBINE_ORBIT_TARGET,
+      },
     }),
-    [TURBINE_GLB_URL]
+    []
   );
 
   const focusGaugeScene = useCallback((scene: TurbineGaugeScene) => {
@@ -92,10 +112,13 @@ export default function HomeScreen() {
       {/* Horizontal scroll when viewport is narrower than fixed layout — layout does not shrink */}
       <div className="min-h-dvh overflow-x-auto overflow-y-auto bg-black text-white">
         <div className="p-6 flex flex-col gap-6 items-start shrink-0 w-max">
-        {/* Title */}
-        <h1 className="text-4xl font-bold">
-          <span className="text-blue-500">AES</span>{" "}
-          <span className="text-red-500">Mega</span>
+        {/* Title — logo from `frontend/public/aesmegalogo.png` */}
+        <h1 className="m-0 flex items-center">
+          <img
+            src="/aesmegalogo.png"
+            alt="AES Mega"
+            className="h-11 w-auto max-w-[280px] object-contain object-left"
+          />
         </h1>
 
         {/* Main layout: KPIs, then Valve + Power row and Noise | Temperature | Vibration row */}
@@ -119,7 +142,7 @@ export default function HomeScreen() {
 
           {/* 3D sector: positioned to the right without affecting KPI layout */}
           <div className="pointer-events-none absolute left-[252px] top-[110px] z-[999]">
-            <div className="pointer-events-auto h-[400px] w-[800px]">
+            <div className="pointer-events-auto relative h-[400px] w-[800px]">
               <TurbineViewerErrorBoundary
                 modelUrl={TURBINE_GLB_URL}
                 className="h-full w-full"
@@ -127,12 +150,15 @@ export default function HomeScreen() {
                 <ScadaGlbViewer
                   url={TURBINE_GLB_URL}
                   className="h-full w-full"
-                  autoFit
+                  autoFit={TURBINE_AUTO_FIT}
+                  scale={TURBINE_MODEL_SCALE}
+                  cameraFov={50}
                   fitMargin={TURBINE_FIT_MARGIN}
                   initialCameraPosition={TURBINE_INITIAL_CAMERA}
                   orbitTarget={TURBINE_ORBIT_TARGET}
-                  persistViewStorageKey={TURBINE_VIEW_STORAGE_KEY}
-                  persistLayoutKey={TURBINE_PERSIST_LAYOUT_KEY}
+                  logViewAfterOrbit={TURBINE_DEBUG_LOG_ORBIT}
+                  persistViewStorageKey="turbine-view"
+                  persistLayoutKey={`pos:${TURBINE_MODEL_POSITION.join(",")};rotY:${TURBINE_MODEL_ROTATION_Y};scale:${TURBINE_MODEL_SCALE}`}
                   viewLocked={TURBINE_VIEW_LOCKED}
                   activeCameraPreset={null}
                   cameraPresets={turbineCameraPresets}
@@ -140,6 +166,16 @@ export default function HomeScreen() {
                   modelRotationY={TURBINE_MODEL_ROTATION_Y}
                 />
               </TurbineViewerErrorBoundary>
+              <div
+                className="pointer-events-none absolute inset-0 flex items-end justify-end p-4 select-none"
+                aria-hidden
+              >
+                <img
+                  src="/images/aesmegaweb.png"
+                  alt=""
+                  className="max-h-[36%] max-w-[62%] object-contain object-right object-bottom opacity-25 drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
+                />
+              </div>
             </div>
           </div>
 

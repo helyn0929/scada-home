@@ -381,9 +381,7 @@ function CameraFovSync({ fov }: { fov: number }) {
   useEffect(() => {
     if (!camera) return;
     if ("fov" in camera) {
-      // @ts-expect-error -- r3f camera can be PerspectiveCamera; keep runtime-guarded
       camera.fov = fov;
-      // @ts-expect-error -- runtime camera guard
       camera.updateProjectionMatrix?.();
     }
   }, [camera, fov]);

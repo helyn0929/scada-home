@@ -309,7 +309,7 @@ export default function ScadaGlbViewer({
         }}
         gl={{ antialias: true, logarithmicDepthBuffer: true }}
         dpr={[1, 2]}
-        style={{ touchAction: "none", width: "100%", height: "100%", display: "block" }}
+        style={{ touchAction: viewLocked ? "pinch-zoom" : "none", width: "100%", height: "100%", display: "block" }}
       >
         <CameraFovSync fov={cameraFov} />
         <color attach="background" args={["#2c2c30"]} />

@@ -5,7 +5,11 @@ from layout_query import query_layout
 from layout_overview import overview_layout
 from callbacks import query, compare_dates, overview
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(
+    __name__,
+    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    requests_pathname_prefix="/history/",
+)
 app.config.suppress_callback_exceptions = True
 server = app.server
 app.title = "湖山小水力 - 歷史查詢"

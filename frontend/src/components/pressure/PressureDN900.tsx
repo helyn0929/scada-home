@@ -84,7 +84,7 @@ function PressureBarRow({
         <span
           className={`whitespace-nowrap text-right text-xs font-semibold tabular-nums leading-none ${outOfRange ? "text-[#FE0C0C]" : "text-white"}`}
         >
-          {value == null ? "--" : outOfRange ? value.toFixed(1) : clamped.toFixed(1)}
+          {value == null ? "--" : outOfRange ? value.toFixed(2) : clamped.toFixed(2)}
           {outOfRange ? (
             <span className="ml-0.5 text-[9px] font-bold text-[#FE0C0C]">
               {outHigh ? "HI" : "LO"}

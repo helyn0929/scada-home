@@ -172,7 +172,7 @@ export default function TemperatureCard({
         <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-4">
           <div className="flex min-w-0 flex-col gap-1">
             <span className="text-center text-[11px] font-semibold leading-[14px] text-white whitespace-nowrap">
-              Control panel
+              ControlCubicle
             </span>
             <div className="mb-0.5 h-px w-full border-t-2 border-white/60 mix-blend-overlay" />
             <div className="flex justify-center">
@@ -181,7 +181,7 @@ export default function TemperatureCard({
           </div>
           <div className="flex min-w-0 flex-col gap-1">
             <span className="text-center text-[11px] font-semibold leading-[14px] text-white whitespace-nowrap">
-              Environment
+              PowerHouse
             </span>
             <div className="mb-0.5 h-px w-full border-t-2 border-white/60 mix-blend-overlay" />
             <div className="flex justify-center">

@@ -3,9 +3,12 @@ import React, { useEffect, useState } from "react";
 const FILL_COLOR_NORMAL = "#06E2F4";
 const FILL_COLOR_ALARM = "#FE0C0C";
 const VALUE_MIN = 0;
-const VALUE_MAX = 10;
+const VALUE_MAX = 0.3;
 /** ppm at or above → bar turns red */
-const PPM_ALARM_AT = 5;
+const PPM_ALARM_AT = 0.3;
+/** Only show HI/LO if the reading is truly implausible (not just above display max). */
+const SENSOR_MIN = 0;
+const SENSOR_MAX = 10;
 const UPDATE_MS = 1000;
 
 const BAR_WIDTH = 118;
@@ -35,8 +38,8 @@ function QualityBarRow({
   unit: string;
 }) {
   const clamped = clamp(value, VALUE_MIN, VALUE_MAX);
-  const outHigh = value > VALUE_MAX;
-  const outLow = value < VALUE_MIN;
+  const outHigh = value > SENSOR_MAX;
+  const outLow = value < SENSOR_MIN;
   const outOfRange = outHigh || outLow;
   const fillWidth = (BAR_WIDTH * clamped) / VALUE_MAX;
   const fillColor = outOfRange
@@ -124,13 +127,13 @@ type WaterQualityTestingProps = { hideTitle?: boolean };
 export default function WaterQualityTesting({
   hideTitle = false,
 }: WaterQualityTestingProps) {
-  const [ppmBeforeDn900, setPpmBeforeDn900] = useState(3.8);
-  const [ppmAfterDn1400d, setPpmAfterDn1400d] = useState(2.4);
+  const [ppmBeforeDn900, setPpmBeforeDn900] = useState(0.12);
+  const [ppmAfterDn1400d, setPpmAfterDn1400d] = useState(0.08);
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      setPpmBeforeDn900((v) => bump(v, 0.35));
-      setPpmAfterDn1400d((v) => bump(v, 0.3));
+      setPpmBeforeDn900((v) => bump(v, 0.03));
+      setPpmAfterDn1400d((v) => bump(v, 0.03));
     }, UPDATE_MS);
     return () => window.clearInterval(id);
   }, []);

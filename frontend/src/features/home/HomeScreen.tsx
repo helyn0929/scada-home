@@ -16,6 +16,7 @@ import WaterQualityTesting, {
 } from "@/components/water/WaterQualityTesting"
 import ScadaGlbViewer from "@/components/three/ScadaGlbViewer"
 import TurbineViewerErrorBoundary from "@/components/three/TurbineViewerErrorBoundary"
+import ScaleToFit from "@/components/layout/ScaleToFit"
 import { TURBINE_GLB_URL } from "@/config/turbineGltfUrl"
 import {
   TURBINE_SCENE_PRESET_SEEDS,
@@ -71,7 +72,13 @@ const TURBINE_DEBUG_LOG_ORBIT = false
 /** Freeze orbit/zoom; set `false` while tuning or when `TURBINE_DEBUG_LOG_ORBIT` is on. */
 const TURBINE_VIEW_LOCKED = true
 /** Bounds padding; larger = farther / safer; start at viewer default. */
-const TURBINE_FIT_MARGIN = 0.52
+const TURBINE_FIT_MARGIN = 0.75
+
+/**
+ * Fixed SCADA canvas width (px) for scale-to-fit: 1236px intrinsic grid + `p-6` horizontal padding (48px).
+ * Grid: 240 + 12 + (240+12+240) + 12 + 480 = 1236.
+ */
+const DASHBOARD_DESIGN_WIDTH = 1284
 
 function format1Decimal(value: number | undefined | null) {
   if (value === undefined || value === null || Number.isNaN(value)) {
@@ -109,9 +116,13 @@ export default function HomeScreen() {
       {/* Floating NavBar */}
       <NavBar />
 
-      {/* Horizontal scroll when viewport is narrower than fixed layout — layout does not shrink */}
-      <div className="min-h-dvh overflow-x-auto overflow-y-auto bg-black text-white">
-        <div className="p-6 flex flex-col gap-6 items-start shrink-0 w-max">
+      {/* Scale-to-fit: fixed-width HMI canvas scales down on narrow viewports */}
+      <div className="h-dvh w-full overflow-hidden bg-black text-white">
+        <ScaleToFit designWidth={DASHBOARD_DESIGN_WIDTH} minScale={0.45}>
+          <div
+            className="box-border flex shrink-0 flex-col items-start gap-6 p-6"
+            style={{ width: DASHBOARD_DESIGN_WIDTH }}
+          >
         {/* Title — logo from `frontend/public/aesmegalogo.png` */}
         <h1 className="m-0 flex items-center">
           <img
@@ -158,7 +169,7 @@ export default function HomeScreen() {
                   orbitTarget={TURBINE_ORBIT_TARGET}
                   logViewAfterOrbit={TURBINE_DEBUG_LOG_ORBIT}
                   persistViewStorageKey="turbine-view"
-                  persistLayoutKey={`pos:${TURBINE_MODEL_POSITION.join(",")};rotY:${TURBINE_MODEL_ROTATION_Y};scale:${TURBINE_MODEL_SCALE}`}
+                  persistLayoutKey={`pos:${TURBINE_MODEL_POSITION.join(",")};rotY:${TURBINE_MODEL_ROTATION_Y};scale:${TURBINE_MODEL_SCALE};fit:${TURBINE_FIT_MARGIN};fov:50`}
                   viewLocked={TURBINE_VIEW_LOCKED}
                   activeCameraPreset={null}
                   cameraPresets={turbineCameraPresets}
@@ -269,6 +280,7 @@ export default function HomeScreen() {
           </div>
         </div>
         </div>
+        </ScaleToFit>
       </div>
     </div>
   );

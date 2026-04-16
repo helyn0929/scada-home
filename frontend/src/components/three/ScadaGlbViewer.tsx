@@ -294,7 +294,8 @@ export default function ScadaGlbViewer({
   return (
     <div
       className={[
-        "rounded-[20px] bg-[#D9D9D9]/15 overflow-hidden touch-none select-none",
+        // Match Canvas clear color so any subpixel gaps still look seamless.
+        "rounded-[20px] bg-[#2c2c30] overflow-hidden touch-none select-none",
         "shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]",
         className ?? "",
       ].join(" ")}
@@ -308,7 +309,7 @@ export default function ScadaGlbViewer({
         }}
         gl={{ antialias: true, logarithmicDepthBuffer: true }}
         dpr={[1, 2]}
-        style={{ touchAction: "none" }}
+        style={{ touchAction: "none", width: "100%", height: "100%", display: "block" }}
       >
         <CameraFovSync fov={cameraFov} />
         <color attach="background" args={["#2c2c30"]} />
@@ -317,7 +318,7 @@ export default function ScadaGlbViewer({
         {/* Before Bounds: clip() needs state.controls. Do not use Bounds observe — it refits and cancels orbit. */}
         <OrbitControls
           makeDefault
-          enablePan={false}
+          enablePan={!viewLocked}
           enableRotate={!viewLocked}
           enableZoom={!viewLocked}
           minDistance={0.001}
@@ -380,9 +381,10 @@ function CameraFovSync({ fov }: { fov: number }) {
   const camera = useThree((s) => s.camera);
   useEffect(() => {
     if (!camera) return;
-    if ("fov" in camera) {
-      camera.fov = fov;
-      camera.updateProjectionMatrix?.();
+    const cam = camera as THREE.PerspectiveCamera;
+    if (cam.isPerspectiveCamera) {
+      cam.fov = fov;
+      cam.updateProjectionMatrix();
     }
   }, [camera, fov]);
   return null;

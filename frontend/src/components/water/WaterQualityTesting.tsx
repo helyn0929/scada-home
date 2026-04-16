@@ -3,9 +3,9 @@ import React from "react";
 const FILL_COLOR_NORMAL = "#06E2F4";
 const FILL_COLOR_ALARM = "#FE0C0C";
 const VALUE_MIN = 0;
-const VALUE_MAX = 10;
+const VALUE_MAX = 0.3;
 /** ppm at or above → bar turns red */
-const PPM_ALARM_AT = 5;
+const PPM_ALARM_AT = 0.3;
 
 const BAR_WIDTH = 118;
 const BAR_HEIGHT = 10;

@@ -4,12 +4,13 @@ REM  NSSM 註冊 Windows 服務（以管理員身分執行）
 REM  執行前請先修改下方路徑為實際安裝路徑
 REM =============================================
 
-set NSSM=C:\tools\nssm\nssm.exe
-set PYTHON=C:\Python312\python.exe
+set NSSM=C:\tools\nssm.exe
+set PYTHON=C:\Users\aesme\scada-home-demo\backend\venv\Scripts\python.exe
+set PYTHON_GLOBAL=C:\Python313\python.exe
 set NODE=C:\Program Files\nodejs\node.exe
 set NODERED=%APPDATA%\npm\node_modules\node-red\red.js
-set BACKEND=C:\scada-home\backend
-set DASH=C:\scada-home\dash-history
+set BACKEND=C:\Users\aesme\scada-home-demo\backend
+set DASH=C:\Users\aesme\scada-home-demo\dash-history
 
 REM --- Flask API ---
 %NSSM% install scada-flask "%PYTHON%" "%BACKEND%\app.py"
@@ -22,7 +23,7 @@ REM --- Flask API ---
 %NSSM% start scada-flask
 
 REM --- Dash 歷史查詢 ---
-%NSSM% install scada-dash "%PYTHON%" "%DASH%\app_blocks.py"
+%NSSM% install scada-dash "%PYTHON_GLOBAL%" "%DASH%\app_blocks.py"
 %NSSM% set scada-dash AppDirectory "%DASH%"
 %NSSM% set scada-dash AppExit Default Restart
 %NSSM% set scada-dash AppRestartDelay 5000

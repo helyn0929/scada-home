@@ -5,6 +5,8 @@ Demo Flask API（極簡版）
 
 import os
 import logging
+import smtplib
+from email.mime.text import MIMEText
 from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify
 from flask_cors import CORS
@@ -34,6 +36,29 @@ logging.getLogger("influx_client").setLevel(logging.INFO)
 
 app.logger.info("Flask 啟動")
 
+# Email 告警設定
+SMTP_HOST = os.getenv("SMTP_HOST", "")
+SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASS = os.getenv("SMTP_PASS", "")
+ALERT_TO  = os.getenv("ALERT_TO", "")
+
+def send_alert(subject: str, body: str):
+    if not all([SMTP_HOST, SMTP_USER, SMTP_PASS, ALERT_TO]):
+        return
+    try:
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = subject
+        msg["From"]    = SMTP_USER
+        msg["To"]      = ALERT_TO
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
+            s.starttls()
+            s.login(SMTP_USER, SMTP_PASS)
+            s.send_message(msg)
+        app.logger.info(f"告警 email 已發送：{subject}")
+    except Exception as e:
+        app.logger.error(f"Email 發送失敗: {e}")
+
 # InfluxDB 連線狀態（只在狀態變化時記 log）
 _influx_ok = True
 
@@ -43,7 +68,7 @@ RATED_CAPACITY = 1500
 # InfluxDB tag_code → 前端 TelemetryData 欄位對應
 TAG_MAPPING = {
     "power_kw":                "GEN_POWER_P",
-    # "energy_kwh":           "GEN_POWER_ACCUM",  # 待確認是否有此值可接
+    "energy_kwh":           "GEN_POWER_ACCUM",
     "discharge_cms":           "TURB_FLOW_IN",
     "noiseIndoor":             "ENV_NOISE_IN",
     "noiseOutdoor":            "ENV_NOISE_OUT",
@@ -88,6 +113,10 @@ def view_home():
     if not raw:
         if _influx_ok:
             app.logger.warning("InfluxDB 回傳空資料，請確認連線與 Node-RED 是否正常")
+            send_alert(
+                "[SCADA 湖山] 資料異常",
+                "InfluxDB 回傳空資料，請確認 Node-RED 與 PLC 連線是否正常。\n\n監控位址：http://192.23.63.200"
+            )
             _influx_ok = False
     else:
         if not _influx_ok:
@@ -99,14 +128,30 @@ def view_home():
     for frontend_key, tag_code in TAG_MAPPING.items():
         data[frontend_key] = raw.get(tag_code)
 
-    # 累積發電量（從 InfluxDB 累加 GEN_POWER_P，PLC 有直接值時可替換）
-    energy_kwh = get_accumulated_energy(hours=24)
+    # 累積發電量（直接從 PLC DB59 讀取）
+    energy_kwh = data.get("energy_kwh") or 0
     if energy_kwh >= 1000:
         data["energy_kwh"] = round(energy_kwh / 1000, 2)
         data["energy_unit"] = "MWh"
     else:
-        data["energy_kwh"] = energy_kwh
+        data["energy_kwh"] = round(energy_kwh, 2)
         data["energy_unit"] = "kWh"
+
+    # 感測器雜訊截斷：物理上不可能為負的欄位，-0.5 以內的負值顯示為 0
+    NON_NEGATIVE_FIELDS = [
+        "discharge_cms", "noiseIndoor", "noiseOutdoor",
+        "waterQualityIn", "waterQualityOut",
+        "pressureBeforeDn900", "pressureAfterDn900",
+        "energy_kwh",
+    ]
+    for field in NON_NEGATIVE_FIELDS:
+        v = data.get(field)
+        if v is not None and -0.5 < v < 0:
+            data[field] = 0
+
+    # 室外噪音感測器校正（-4 dB offset）
+    if data.get("noiseOutdoor") is not None:
+        data["noiseOutdoor"] = round(data["noiseOutdoor"] - 4, 1)
 
     # 容量因數（計算欄位）
     power = raw.get("GEN_POWER_P")

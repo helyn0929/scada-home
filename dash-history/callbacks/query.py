@@ -90,8 +90,9 @@ def register_callbacks(app):
             tag_label_map[opt["value"]] = opt["label"]
 
         # ---- helper：查詢函式（aggregated_data / hourly_stats）----
-        def query_range(start_date, end_date, tags, query_api):
-            """查詢多個 tag_code 的每日統計（mean of hourly means）"""
+        def query_range(start_date, end_date, tags, query_api, single_day=False):
+            """查詢多個 tag_code 的統計。
+            single_day=True 時回傳 24 小時逐小時資料；否則回傳每日平均。"""
             if not tags:
                 return pd.DataFrame(columns=["_date"])
             start_utc, stop_utc = utc_window_for_local_days(start_date, end_date)
@@ -112,12 +113,21 @@ from(bucket: "{influx_bucket_aggregated}")
                 if not isinstance(df_f, pd.DataFrame) or df_f.empty or "_time" not in df_f.columns:
                     continue
 
-                df_f["_date"] = tz_date_series(df_f["_time"])
-                df_f = df_f[(df_f["_date"] >= start_date) & (df_f["_date"] <= end_date)]
                 df_f["_value"] = pd.to_numeric(df_f["_value"], errors="coerce")
 
-                # 每日取各小時 mean 的平均值
-                col_frames[tag] = df_f.groupby("_date")["_value"].mean()
+                if single_day:
+                    # 每小時一個點，x 軸為台灣時間 HH:00
+                    df_f["_date"] = (
+                        pd.to_datetime(df_f["_time"])
+                        .dt.tz_convert("Asia/Taipei")
+                        .dt.strftime("%H:00")
+                    )
+                    col_frames[tag] = df_f.set_index("_date")["_value"]
+                else:
+                    # 每日取各小時 mean 的平均值
+                    df_f["_date"] = tz_date_series(df_f["_time"])
+                    df_f = df_f[(df_f["_date"] >= start_date) & (df_f["_date"] <= end_date)]
+                    col_frames[tag] = df_f.groupby("_date")["_value"].mean()
 
             if not col_frames:
                 return pd.DataFrame(columns=["_date"])
@@ -180,7 +190,9 @@ from(bucket: "{influx_bucket_aggregated}")
         query_api = _influx_client.query_api()
 
         # ===== 本期 =====
-        df_main = query_range(base_start, base_end, query_tags, query_api)
+        is_single_day = (base_start == base_end)
+        x_label = "時間（每小時）" if is_single_day else "日期"
+        df_main = query_range(base_start, base_end, query_tags, query_api, single_day=is_single_day)
 
         if df_main.empty:
             _influx_client.close()
@@ -209,7 +221,7 @@ from(bucket: "{influx_bucket_aggregated}")
         for col in df_tbl.select_dtypes(include="float").columns:
             df_tbl[col] = df_tbl[col].round(2)
         data = df_tbl.to_dict("records")
-        label_map = {"_date": "日期", **tag_label_map}
+        label_map = {"_date": x_label, **tag_label_map}
         columns = [{"name": label_map.get(col, col), "id": col} for col in df_tbl.columns]
 
         # ===== 圖 =====
@@ -233,7 +245,8 @@ from(bucket: "{influx_bucket_aggregated}")
         no_data_style = HIDE
 
         if is_compare_mode and comp_start and comp_end:
-            df_comp = query_range(comp_start, comp_end, query_tags, query_api)
+            is_comp_single_day = (comp_start == comp_end)
+            df_comp = query_range(comp_start, comp_end, query_tags, query_api, single_day=is_comp_single_day)
 
             if df_comp.empty:
                 no_data_msg = html.Div(
@@ -345,7 +358,7 @@ from(bucket: "{influx_bucket_aggregated}")
 
         # 主題套到圖
         fig.update_layout(title="統計趨勢圖",
-                          xaxis_title="日期", yaxis_title="數值",
+                          xaxis_title=x_label, yaxis_title="數值",
                           margin=dict(l=30, r=20, t=40, b=30))
         fig = apply_chart_theme(fig, theme_mode)
 

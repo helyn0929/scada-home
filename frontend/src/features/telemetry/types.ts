@@ -15,6 +15,7 @@ export interface TelemetryData {
   // 🔹 發電相關
   power_kw?: number;
   energy_kwh?: number;
+  energy_unit?: string;
   capacity_factor?: number;
 
   // 🔹 水文

@@ -80,6 +80,13 @@ function format1Decimal(value: number | undefined | null) {
   return Number(value).toFixed(1)
 }
 
+function format3Decimal(value: number | undefined | null) {
+  if (value === undefined || value === null || Number.isNaN(value)) {
+    return "--"
+  }
+  return Number(value).toFixed(3)
+}
+
 const STATUS_CONFIG = {
   connecting: { color: "bg-yellow-400", label: "連線中" },
   ok:         { color: "bg-green-400",  label: "即時" },
@@ -201,8 +208,8 @@ export default function HomeScreen() {
           <div className="flex flex-col gap-4">
             <KpiCard
               label="ENERGY GENERATED"
-              value={format1Decimal(data?.energy_kwh)} // display live data here
-              unit="kWh"
+              value={format3Decimal(data?.energy_kwh)} // display live data here
+              unit={data?.energy_unit ?? "kWh"}
               icon={
                 <img
                   src="/assets/icons/active-power.svg"
@@ -213,7 +220,7 @@ export default function HomeScreen() {
             />
             <KpiCard
               label="DISCHARGE"
-              value={format1Decimal(data?.discharge_cms)} // display live data here
+              value={format3Decimal(data?.discharge_cms)} // display live data here
               unit="cms"
               icon={
                 <img

@@ -2,12 +2,13 @@ import React, { useEffect, useState } from "react";
 
 const FILL_COLOR_NORMAL = "#06E2F4";
 const FILL_COLOR_ALARM = "#FE0C0C";
-const VALUE_MIN = 0;
-const VALUE_MAX = 0.3;
+// Oil-in-water display range (ppm)
+const VALUE_MIN = 1;
+const VALUE_MAX = 10;
 /** ppm at or above → bar turns red */
-const PPM_ALARM_AT = 0.3;
+const PPM_ALARM_AT = 10;
 /** Only show HI/LO if the reading is truly implausible (not just above display max). */
-const SENSOR_MIN = 0;
+const SENSOR_MIN = 1;
 const SENSOR_MAX = 10;
 const UPDATE_MS = 1000;
 
@@ -41,7 +42,12 @@ function QualityBarRow({
   const outHigh = value > SENSOR_MAX;
   const outLow = value < SENSOR_MIN;
   const outOfRange = outHigh || outLow;
-  const fillWidth = (BAR_WIDTH * clamped) / VALUE_MAX;
+  const denom = VALUE_MAX - VALUE_MIN;
+  const frac = denom <= 0 ? 0 : (clamped - VALUE_MIN) / denom;
+  const fillWidth = BAR_WIDTH * clamp(frac, 0, 1);
+  const alarmFrac =
+    denom <= 0 ? 1 : (PPM_ALARM_AT - VALUE_MIN) / denom;
+  const alarmX = BAR_WIDTH * clamp(alarmFrac, 0, 1);
   const fillColor = outOfRange
     ? FILL_COLOR_ALARM
     : clamped >= PPM_ALARM_AT
@@ -77,6 +83,17 @@ function QualityBarRow({
           height={BAR_HEIGHT}
           fill="#D9D9D9"
           rx={1}
+        />
+        {/* Alarm threshold marker (e.g. 10 ppm) */}
+        <line
+          x1={alarmX}
+          y1={BAR_TOP - 1}
+          x2={alarmX}
+          y2={BAR_TOP + BAR_HEIGHT + 1}
+          stroke={FILL_COLOR_ALARM}
+          strokeWidth={1.2}
+          opacity={0.9}
+          shapeRendering="crispEdges"
         />
         <rect
           x={0}
@@ -116,7 +133,7 @@ export function WaterQualityTestingTitle() {
   return (
     <div className="inline-flex w-fit shrink-0 items-center rounded-[9px] bg-[#D9D9D9]/20 px-4 py-1.5 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]">
       <span className="whitespace-nowrap font-semibold text-[15px] leading-[18px] text-white">
-        Water Quality
+        Oil in Water
       </span>
     </div>
   );
@@ -127,13 +144,13 @@ type WaterQualityTestingProps = { hideTitle?: boolean };
 export default function WaterQualityTesting({
   hideTitle = false,
 }: WaterQualityTestingProps) {
-  const [ppmBeforeDn900, setPpmBeforeDn900] = useState(0.12);
-  const [ppmAfterDn1400d, setPpmAfterDn1400d] = useState(0.08);
+  const [ppmBeforeDn900, setPpmBeforeDn900] = useState(1.2);
+  const [ppmAfterDn1400d, setPpmAfterDn1400d] = useState(1.0);
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      setPpmBeforeDn900((v) => bump(v, 0.03));
-      setPpmAfterDn1400d((v) => bump(v, 0.03));
+      setPpmBeforeDn900((v) => bump(v, 0.3));
+      setPpmAfterDn1400d((v) => bump(v, 0.3));
     }, UPDATE_MS);
     return () => window.clearInterval(id);
   }, []);

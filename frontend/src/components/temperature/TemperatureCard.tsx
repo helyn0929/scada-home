@@ -113,6 +113,20 @@ function GaugeDial({ value, warningThreshold }: GaugeDialProps) {
         >
           {display}
         </text>
+        {!outOfRange ? (
+          <text
+            x="29"
+            y="34"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={valueFill === GAUGE_COLOR_WARNING ? GAUGE_COLOR_WARNING : "rgba(255,255,255,0.75)"}
+            fontFamily="Inter, system-ui, sans-serif"
+            fontSize="8"
+            fontWeight={600}
+          >
+            °C
+          </text>
+        ) : null}
         {outOfRange ? (
           <text
             x="29"

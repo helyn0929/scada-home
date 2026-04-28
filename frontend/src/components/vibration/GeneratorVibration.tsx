@@ -41,29 +41,25 @@ interface GeneratorVibrationProps {
 export default function GeneratorVibration({ vibrationDE, vibrationNDE }: GeneratorVibrationProps) {
   const [dePoints, setDePoints] = useState<Array<{ x: number; y: number }>>([]);
   const [ndePoints, setNdePoints] = useState<Array<{ x: number; y: number }>>([]);
-  const deLast = useRef(1.4);
-  const ndeLast = useRef(1.8);
+  const deLast = useRef(0);
+  const ndeLast = useRef(0);
+  const [hasSeeded, setHasSeeded] = useState(false);
+
+  // Wait for first real data before seeding — avoids fake values showing then dropping
+  useEffect(() => {
+    if (hasSeeded) return;
+    if (vibrationDE == null && vibrationNDE == null) return;
+    const deVal = vibrationDE ?? 0;
+    const ndeVal = vibrationNDE ?? 0;
+    deLast.current = deVal;
+    ndeLast.current = ndeVal;
+    setDePoints(Array.from({ length: MAX_POINTS }, (_, i) => ({ x: i, y: deVal })));
+    setNdePoints(Array.from({ length: MAX_POINTS }, (_, i) => ({ x: i, y: ndeVal })));
+    setHasSeeded(true);
+  }, [vibrationDE, vibrationNDE, hasSeeded]);
 
   useEffect(() => {
-    // Seed initial points so the chart fills from the start
-    const seedDe: Array<{ x: number; y: number }> = [];
-    const seedNde: Array<{ x: number; y: number }> = [];
-    let d = 1.4;
-    let n = 1.8;
-    for (let i = 0; i < MAX_POINTS; i++) {
-      d = nextVibration(d, 1.4, 0.6);
-      n = nextVibration(n, 1.8, 0.5);
-      seedDe.push({ x: i, y: d });
-      seedNde.push({ x: i, y: n });
-    }
-    deLast.current = d;
-    ndeLast.current = n;
-    setDePoints(seedDe);
-    setNdePoints(seedNde);
-  }, []);
-
-  useEffect(() => {
-    if (dePoints.length === 0) return;
+    if (!hasSeeded) return;
     const t = setInterval(() => {
       if (vibrationDE != null) {
         setDePoints((prev) => {
@@ -81,7 +77,7 @@ export default function GeneratorVibration({ vibrationDE, vibrationNDE }: Genera
       }
     }, UPDATE_MS);
     return () => clearInterval(t);
-  }, [dePoints.length, vibrationDE, vibrationNDE]);
+  }, [hasSeeded, vibrationDE, vibrationNDE]);
 
   const chartWidth = 268;
   const chartHeight = 58;

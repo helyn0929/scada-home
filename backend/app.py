@@ -128,14 +128,10 @@ def view_home():
     for frontend_key, tag_code in TAG_MAPPING.items():
         data[frontend_key] = raw.get(tag_code)
 
-    # 累積發電量（直接從 PLC DB59 讀取）
-    energy_kwh = data.get("energy_kwh") or 0
-    if energy_kwh >= 1000:
-        data["energy_kwh"] = round(energy_kwh / 1000, 2)
-        data["energy_unit"] = "MWh"
-    else:
-        data["energy_kwh"] = round(energy_kwh, 2)
-        data["energy_unit"] = "kWh"
+    # 累積發電量（PLC 原始值單位為 MWh，÷1000 換算為 GWh 顯示）
+    energy_raw = data.get("energy_kwh") or 0
+    data["energy_kwh"] = round(energy_raw / 1000, 3)
+    data["energy_unit"] = "GWh"
 
     # 感測器雜訊截斷：物理上不可能為負的欄位，-0.5 以內的負值顯示為 0
     NON_NEGATIVE_FIELDS = [

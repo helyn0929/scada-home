@@ -5,6 +5,7 @@ from dash.exceptions import PreventUpdate
 import pandas as pd
 import plotly.graph_objects as go
 from utils.theme_helpers import get_table_styles, apply_chart_theme
+from utils.db_helpers import get_alarm_thresholds, get_tag_units
 from utils.date_helpers import utc_window_for_local_days, tz_date_series
 from utils.ui_helpers import (
     create_stat_card, format_number, format_delta, format_percent,
@@ -228,13 +229,25 @@ from(bucket: "{influx_bucket_aggregated}")
         label_map = {"_date": x_label, **tag_label_map}
         columns = [{"name": label_map.get(col, col), "id": col} for col in df_tbl.columns]
 
-        # ===== 圖 =====
+        # ===== 圖（多 Y 軸：同單位共用一軸）=====
+        tag_units = get_tag_units(query_tags)
+        # 為每個不同單位分配 yaxis 編號
+        unit_axis = {}  # unit -> yaxis key (e.g. "y", "y2", "y3"...)
+        tag_yaxis = {}  # tag_code -> yaxis key
+        for tag in [c for c in df_main.columns if c != "_date"]:
+            unit = tag_units.get(tag, "")
+            if unit not in unit_axis:
+                idx = len(unit_axis) + 1
+                unit_axis[unit] = "y" if idx == 1 else f"y{idx}"
+            tag_yaxis[tag] = unit_axis[unit]
+
         fig = go.Figure()
         for f in [c for c in df_main.columns if c != "_date"]:
             fig.add_trace(go.Scatter(
                 x=df_main["_date"], y=df_main[f].round(2),
                 mode="lines+markers",
                 name=f"{tag_label_map.get(f, f)}（本期）",
+                yaxis=tag_yaxis.get(f, "y"),
                 hovertemplate="%{x}<br><b>%{y:.2f}</b><extra></extra>",
             ))
 
@@ -360,10 +373,31 @@ from(bucket: "{influx_bucket_aggregated}")
                 showlegend=True,
             ))
 
-        # 主題套到圖
-        fig.update_layout(title="統計趨勢圖",
-                          xaxis_title=x_label, yaxis_title="數值",
-                          margin=dict(l=30, r=20, t=40, b=30))
+        # 多 Y 軸 layout（每個不同單位一條軸）
+        yaxis_layout = {}
+        axis_positions = [0, 1, 0.08, 0.92]  # 左1、右1、左2、右2
+        sides = ["left", "right", "left", "right"]
+        for i, (unit, ykey) in enumerate(unit_axis.items()):
+            axis_cfg = dict(
+                title=unit or "數值",
+                showgrid=(i == 0),
+                zeroline=False,
+            )
+            if i > 0:
+                axis_cfg["overlaying"] = "y"
+                axis_cfg["side"] = sides[i % len(sides)]
+                if i >= 2:
+                    axis_cfg["anchor"] = "free"
+                    axis_cfg["position"] = axis_positions[i]
+            layout_key = "yaxis" if ykey == "y" else f"yaxis{ykey[1:]}"
+            yaxis_layout[layout_key] = axis_cfg
+
+        fig.update_layout(
+            title="統計趨勢圖",
+            xaxis_title=x_label,
+            margin=dict(l=60, r=60, t=40, b=30),
+            **yaxis_layout,
+        )
         fig = apply_chart_theme(fig, theme_mode)
 
         # ===== 一般統計卡（有中文對照）=====

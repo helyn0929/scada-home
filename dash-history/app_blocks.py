@@ -112,9 +112,26 @@ app.clientside_callback(
     function(n_clicks) {
         if (!n_clicks) return window.dash_clientside.no_update;
         const chart = document.getElementById("result-line-chart");
-        if (!chart) return;
-        const btn = chart.querySelector(".modebar-btn[data-title='Download plot as a png']");
-        if (btn) btn.click();
+        if (!chart) return "";
+        // 嘗試多種 selector 以相容不同 Plotly 版本
+        const selectors = [
+            ".modebar-btn[data-title='Download plot as a png']",
+            ".modebar-btn[data-title='download plot as a png']",
+            ".modebar-btn[data-attr='toimage']",
+            "a[data-title='Download plot as a png']",
+        ];
+        for (const sel of selectors) {
+            const btn = chart.querySelector(sel);
+            if (btn) { btn.click(); return ""; }
+        }
+        // fallback: 點第一個 modebar 按鈕群裡的下載按鈕
+        const allBtns = chart.querySelectorAll(".modebar-btn");
+        for (const btn of allBtns) {
+            const title = (btn.getAttribute("data-title") || "").toLowerCase();
+            if (title.includes("download") || title.includes("png") || title.includes("image")) {
+                btn.click(); return "";
+            }
+        }
         return "";
     }
     """,

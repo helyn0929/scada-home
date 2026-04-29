@@ -95,6 +95,15 @@ def get_all_query_tags() -> list[dict]:
         return []
 
 
+def get_tag_units(tag_codes: list) -> dict:
+    """回傳 {tag_code: unit} 對照表"""
+    try:
+        points = _load_plc_points()
+        return {p["tag_code"]: p.get("unit", "") for p in points if p["tag_code"] in tag_codes}
+    except Exception:
+        return {}
+
+
 def get_alarm_thresholds(tag_codes: list) -> list[dict]:
     """告警門檻（輕量版無 alarm_rules，回傳空列表，圖表不畫門檻線）"""
     return []

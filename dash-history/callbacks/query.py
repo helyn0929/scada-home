@@ -116,18 +116,22 @@ from(bucket: "{influx_bucket_aggregated}")
                 df_f["_value"] = pd.to_numeric(df_f["_value"], errors="coerce")
 
                 if single_day:
-                    # 每小時一個點，x 軸為台灣時間 HH:00
-                    df_f["_date"] = (
-                        pd.to_datetime(df_f["_time"])
-                        .dt.tz_convert("Asia/Taipei")
-                        .dt.strftime("%H:00")
-                    )
+                    # 只保留台灣時間屬於目標日的小時資料，避免 buffer 天的資料混入
+                    taipei_times = pd.to_datetime(df_f["_time"]).dt.tz_convert("Asia/Taipei")
+                    target_date = pd.Timestamp(start_date).date()
+                    mask = taipei_times.dt.date == target_date
+                    df_f = df_f[mask].copy()
+                    if df_f.empty:
+                        continue
+                    df_f["_date"] = taipei_times[mask].dt.strftime("%H:00")
                     col_frames[tag] = df_f.set_index("_date")["_value"]
                 else:
-                    # 每日取各小時 mean 的平均值
-                    df_f["_date"] = tz_date_series(df_f["_time"])
-                    df_f = df_f[(df_f["_date"] >= start_date) & (df_f["_date"] <= end_date)]
-                    col_frames[tag] = df_f.groupby("_date")["_value"].mean()
+                    # 每小時一個點，x 軸為台灣時間 YYYY-MM-DD HH:00
+                    taipei_times = pd.to_datetime(df_f["_time"]).dt.tz_convert("Asia/Taipei")
+                    df_f["_date"] = taipei_times.dt.strftime("%Y-%m-%d %H:00")
+                    date_only = taipei_times.dt.date.astype(str)
+                    df_f = df_f[(date_only >= start_date) & (date_only <= end_date)].copy()
+                    col_frames[tag] = df_f.set_index("_date")["_value"]
 
             if not col_frames:
                 return pd.DataFrame(columns=["_date"])
@@ -191,7 +195,7 @@ from(bucket: "{influx_bucket_aggregated}")
 
         # ===== 本期 =====
         is_single_day = (base_start == base_end)
-        x_label = "時間（每小時）" if is_single_day else "日期"
+        x_label = "時間（每小時）"
         df_main = query_range(base_start, base_end, query_tags, query_api, single_day=is_single_day)
 
         if df_main.empty:

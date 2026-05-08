@@ -148,7 +148,18 @@ export default function HomeScreen() {
                 />
               }
             />
-            <TurbineGeneratorGauges onFocusScene={focusGaugeScene} />
+            <TurbineGeneratorGauges
+              onFocusScene={focusGaugeScene}
+              telemetry={{
+                tempWindingU: data?.tempWindingU,
+                tempWindingV: data?.tempWindingV,
+                tempWindingW: data?.tempWindingW,
+                noiseIndoor: data?.noiseIndoor,
+                noiseOutdoor: data?.noiseOutdoor,
+                tempControlPanel: data?.tempControlPanel,
+                tempEnvironment: data?.tempEnvironment,
+              }}
+            />
           </div>
 
           {/* 3D sector: positioned to the right without affecting KPI layout */}

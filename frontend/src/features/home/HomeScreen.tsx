@@ -174,6 +174,15 @@ export default function HomeScreen() {
               genSpeedRpm={data?.genSpeedRpm}
               genSpeedPct={data?.genSpeedPct}
               onFocusScene={focusGaugeScene}
+              telemetry={{
+                tempWindingU: data?.tempWindingU,
+                tempWindingV: data?.tempWindingV,
+                tempWindingW: data?.tempWindingW,
+                noiseIndoor: data?.noiseIndoor,
+                noiseOutdoor: data?.noiseOutdoor,
+                tempControlPanel: data?.tempControlPanel,
+                tempEnvironment: data?.tempEnvironment,
+              }}
             />
           </div>
 

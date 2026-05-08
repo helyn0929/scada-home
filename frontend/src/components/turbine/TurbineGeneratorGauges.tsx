@@ -19,6 +19,99 @@ const GEN_RPM_MAX = 1200;
 const GEN_SPEED_PCT_MIN = 80;
 const GEN_SPEED_PCT_MAX = 120;
 
+// Health thresholds (powerhouse status panel)
+const WINDING_TEMP_WARN = 100;
+const WINDING_TEMP_ALARM = 120;
+const CTRL_PANEL_TEMP_WARN = 45;
+const CTRL_PANEL_TEMP_ALARM = 60;
+const AMBIENT_TEMP_WARN = 35;
+const AMBIENT_TEMP_ALARM = 40;
+const NOISE_INDOOR_WARN = 85;
+const NOISE_INDOOR_ALARM = 95;
+const NOISE_OUTDOOR_WARN = 70;
+const NOISE_OUTDOOR_ALARM = 80;
+
+type HealthLevel = "normal" | "warning" | "alarm";
+
+const STATUS_COLOR: Record<HealthLevel, string> = {
+  normal: "#06E2F4",
+  warning: "#FACC15",
+  alarm: "#FE0C0C",
+};
+
+const STATUS_LABEL: Record<HealthLevel, string> = {
+  normal: "Normal",
+  warning: "Warning",
+  alarm: "Alarm",
+};
+
+function worstLevel(...levels: HealthLevel[]): HealthLevel {
+  if (levels.includes("alarm")) return "alarm";
+  if (levels.includes("warning")) return "warning";
+  return "normal";
+}
+
+function thresholdLevel(v: number | undefined, warnAt: number, alarmAt: number): HealthLevel {
+  if (v == null) return "normal";
+  if (v >= alarmAt) return "alarm";
+  if (v >= warnAt) return "warning";
+  return "normal";
+}
+
+export interface TurbineGaugeTelemetry {
+  tempWindingU?: number;
+  tempWindingV?: number;
+  tempWindingW?: number;
+  noiseIndoor?: number;
+  noiseOutdoor?: number;
+  tempControlPanel?: number;
+  tempEnvironment?: number;
+}
+
+function StatusRow({ label, level }: { label: string; level: HealthLevel }) {
+  const color = STATUS_COLOR[level];
+  return (
+    <div className="flex items-center justify-between w-full">
+      <span className="text-[12px] font-semibold text-white leading-none">{label}</span>
+      <div className="flex items-center gap-1.5">
+        <span
+          className="text-[10px] font-semibold leading-none"
+          style={{ color, transition: "color 0.4s" }}
+        >
+          {STATUS_LABEL[level]}
+        </span>
+        <div
+          className="h-2 w-2 rounded-full shrink-0"
+          style={{ backgroundColor: color, boxShadow: `0 0 4px ${color}`, transition: "background-color 0.4s, box-shadow 0.4s" }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PowerhouseStatusPanel({
+  hydraulic,
+  electrical,
+  environment,
+}: {
+  hydraulic: HealthLevel;
+  electrical: HealthLevel;
+  environment: HealthLevel;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-1 flex-col items-stretch justify-between rounded-[14px] bg-[#D9D9D9]/20 px-3 py-2.5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]">
+      <span className="text-center text-[9px] font-semibold uppercase tracking-widest text-white/50">
+        Powerhouse
+      </span>
+      <div className="flex flex-col gap-[6px]">
+        <StatusRow label="Hydraulic" level={hydraulic} />
+        <StatusRow label="Electrical" level={electrical} />
+        <StatusRow label="Environment" level={environment} />
+      </div>
+    </div>
+  );
+}
+
 /** Semicircular tick dial (84×52) — provided design */
 const DIAL_VIEWBOX = "0 0 84 52";
 const DIAL_TICK_PATH =
@@ -177,6 +270,8 @@ interface TurbineGeneratorGaugesProps {
   genSpeedPct?: number;
   /** Focus hydraulic (water / wicket) or generator (RPM / speed) in the 3D view. */
   onFocusScene?: (scene: TurbineGaugeScene) => void;
+  /** Live telemetry feeding the powerhouse status panel. */
+  telemetry?: TurbineGaugeTelemetry;
 }
 
 export default function TurbineGeneratorGauges({
@@ -185,12 +280,34 @@ export default function TurbineGeneratorGauges({
   genSpeedRpm,
   genSpeedPct,
   onFocusScene,
+  telemetry,
 }: TurbineGeneratorGaugesProps) {
+  // ── Health computation ──────────────────────────────────────────────
+  const hydraulicHealth = worstLevel(
+    waterFlow != null && (waterFlow < WATER_FLOW_MIN || waterFlow > WATER_FLOW_MAX) ? "alarm" : "normal",
+    guideVanePct != null && (guideVanePct < WICKET_OPEN_MIN || guideVanePct > WICKET_OPEN_MAX) ? "alarm" : "normal",
+  );
+
+  const electricalHealth = worstLevel(
+    genSpeedRpm != null && genSpeedRpm < ALARM_RPM_BELOW ? "alarm" : "normal",
+    genSpeedPct != null && genSpeedPct < ALARM_SPEED_PCT_BELOW ? "alarm" : "normal",
+    thresholdLevel(telemetry?.tempWindingU, WINDING_TEMP_WARN, WINDING_TEMP_ALARM),
+    thresholdLevel(telemetry?.tempWindingV, WINDING_TEMP_WARN, WINDING_TEMP_ALARM),
+    thresholdLevel(telemetry?.tempWindingW, WINDING_TEMP_WARN, WINDING_TEMP_ALARM),
+  );
+
+  const environmentHealth = worstLevel(
+    thresholdLevel(telemetry?.noiseIndoor, NOISE_INDOOR_WARN, NOISE_INDOOR_ALARM),
+    thresholdLevel(telemetry?.noiseOutdoor, NOISE_OUTDOOR_WARN, NOISE_OUTDOOR_ALARM),
+    thresholdLevel(telemetry?.tempControlPanel, CTRL_PANEL_TEMP_WARN, CTRL_PANEL_TEMP_ALARM),
+    thresholdLevel(telemetry?.tempEnvironment, AMBIENT_TEMP_WARN, AMBIENT_TEMP_ALARM),
+  );
+
   const pairClass =
-    "grid h-full min-h-0 min-w-0 flex-1 grid-cols-2 gap-2 place-items-center px-3 py-1 rounded-[14px] bg-[#D9D9D9]/20 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]";
+    "grid h-full min-h-0 w-[236px] min-w-[236px] shrink-0 grid-cols-2 gap-2 place-items-center px-3 py-1 rounded-[14px] bg-[#D9D9D9]/20 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]";
 
   return (
-    <div className="inline-flex h-[96px] min-h-[96px] max-h-[96px] w-[480px] min-w-[480px] max-w-[480px] shrink-0 items-stretch gap-2">
+    <div className="inline-flex h-[96px] min-h-[96px] max-h-[96px] w-[800px] min-w-[800px] max-w-[800px] shrink-0 items-stretch gap-2">
       <div className={pairClass}>
         <TurbineGaugeDial
           value={waterFlow}
@@ -242,6 +359,11 @@ export default function TurbineGeneratorGauges({
           }
         />
       </div>
+      <PowerhouseStatusPanel
+        hydraulic={hydraulicHealth}
+        electrical={electricalHealth}
+        environment={environmentHealth}
+      />
     </div>
   );
 }

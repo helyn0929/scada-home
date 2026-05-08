@@ -4,6 +4,7 @@ from dash import Input, Output, State, dcc, no_update, ctx, html
 from dash.exceptions import PreventUpdate
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from utils.theme_helpers import get_table_styles, apply_chart_theme
 from utils.db_helpers import get_alarm_thresholds, get_tag_units
 from utils.date_helpers import utc_window_for_local_days, tz_date_series
@@ -229,27 +230,41 @@ from(bucket: "{influx_bucket_aggregated}")
         label_map = {"_date": x_label, **tag_label_map}
         columns = [{"name": label_map.get(col, col), "id": col} for col in df_tbl.columns]
 
-        # ===== 圖（多 Y 軸：同單位共用一軸）=====
+        # ===== 圖（stacked subplots：每個單位一帶）=====
         tag_units = get_tag_units(query_tags)
-        # 為每個不同單位分配 yaxis 編號
-        unit_axis = {}  # unit -> yaxis key (e.g. "y", "y2", "y3"...)
-        tag_yaxis = {}  # tag_code -> yaxis key
+        # 依單位分組，保留 tag 在 df_main 的原順序
+        unit_groups = {}  # unit -> [tag_code, ...]
         for tag in [c for c in df_main.columns if c != "_date"]:
-            unit = tag_units.get(tag, "")
-            if unit not in unit_axis:
-                idx = len(unit_axis) + 1
-                unit_axis[unit] = "y" if idx == 1 else f"y{idx}"
-            tag_yaxis[tag] = unit_axis[unit]
+            unit = tag_units.get(tag, "") or ""
+            unit_groups.setdefault(unit, []).append(tag)
 
-        fig = go.Figure()
+        # tag_code -> row index (1-based)
+        unit_to_row = {unit: i + 1 for i, unit in enumerate(unit_groups.keys())}
+        tag_row = {tag: unit_to_row[u] for u, tags in unit_groups.items() for tag in tags}
+
+        n_rows = max(1, len(unit_groups))
+        # 每帶高度 200px，留 margin
+        BAND_HEIGHT = 200
+        chart_height = max(360, n_rows * BAND_HEIGHT + 80)
+
+        fig = make_subplots(
+            rows=n_rows,
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.06,
+        )
+
         for f in [c for c in df_main.columns if c != "_date"]:
-            fig.add_trace(go.Scatter(
-                x=df_main["_date"], y=df_main[f].round(2),
-                mode="lines+markers",
-                name=f"{tag_label_map.get(f, f)}（本期）",
-                yaxis=tag_yaxis.get(f, "y"),
-                hovertemplate="%{x}<br><b>%{y:.2f}</b><extra></extra>",
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=df_main["_date"], y=df_main[f].round(2),
+                    mode="lines+markers",
+                    name=f"{tag_label_map.get(f, f)}（本期）",
+                    legendgroup=f,
+                    hovertemplate="%{x}<br><b>%{y:.2f}</b><extra></extra>",
+                ),
+                row=tag_row.get(f, 1), col=1,
+            )
 
         # ===== 比較期（畫第二條線；並準備比較表/卡）=====
         df_comp = pd.DataFrame()
@@ -277,14 +292,18 @@ from(bucket: "{influx_bucket_aggregated}")
                 for f in [c for c in df_main.columns if c != "_date"]:
                     # 對齊長度（用本期 x 軸）
                     y_cmp = pd.to_numeric(df_comp.get(f), errors="coerce").tolist() if f in df_comp.columns else []
-                    fig.add_trace(go.Scatter(
-                        x=df_main["_date"],
-                        y=[round(v, 2) if v is not None else None for v in (y_cmp[:len(df_main)] + [None]*max(0, len(df_main)-len(y_cmp)))],
-                        mode="lines+markers",
-                        name=f"{tag_label_map.get(f, f)}（比較期）",
-                        line=dict(dash="dash"),
-                        hovertemplate="%{x}<br><b>%{y:.2f}</b><extra></extra>",
-                    ))
+                    fig.add_trace(
+                        go.Scatter(
+                            x=df_main["_date"],
+                            y=[round(v, 2) if v is not None else None for v in (y_cmp[:len(df_main)] + [None]*max(0, len(df_main)-len(y_cmp)))],
+                            mode="lines+markers",
+                            name=f"{tag_label_map.get(f, f)}（比較期）",
+                            line=dict(dash="dash"),
+                            legendgroup=f,
+                            hovertemplate="%{x}<br><b>%{y:.2f}</b><extra></extra>",
+                        ),
+                        row=tag_row.get(f, 1), col=1,
+                    )
                 # ===== 比較表格（本期 vs 比較期）=====
                 compare_fields = [c for c in df_main.columns if c != "_date" and c in df_comp.columns]
                 if compare_fields:
@@ -364,40 +383,27 @@ from(bucket: "{influx_bucket_aggregated}")
             unit_str = f" {rule['threshold_unit']}" if rule["threshold_unit"] else ""
             sev_label = _severity_label.get(rule["severity"], rule["severity"])
             tag_label = tag_label_map.get(rule["tag_code"], rule["tag_code"])
-            fig.add_trace(go.Scatter(
-                x=x_range,
-                y=[rule["threshold_value"]] * len(x_range),
-                mode="lines",
-                name=f"{tag_label} {sev_label}（{rule['threshold_value']}{unit_str}）",
-                line=dict(color=color, dash="dot", width=1.5),
-                showlegend=True,
-            ))
-
-        # 多 Y 軸 layout（每個不同單位一條軸）
-        yaxis_layout = {}
-        axis_positions = [0, 1, 0.08, 0.92]  # 左1、右1、左2、右2
-        sides = ["left", "right", "left", "right"]
-        for i, (unit, ykey) in enumerate(unit_axis.items()):
-            axis_cfg = dict(
-                title=unit or "數值",
-                showgrid=(i == 0),
-                zeroline=False,
+            fig.add_trace(
+                go.Scatter(
+                    x=x_range,
+                    y=[rule["threshold_value"]] * len(x_range),
+                    mode="lines",
+                    name=f"{tag_label} {sev_label}（{rule['threshold_value']}{unit_str}）",
+                    line=dict(color=color, dash="dot", width=1.5),
+                    showlegend=True,
+                ),
+                row=tag_row.get(rule["tag_code"], 1), col=1,
             )
-            if i > 0:
-                axis_cfg["overlaying"] = "y"
-                axis_cfg["side"] = sides[i % len(sides)]
-                if i >= 2:
-                    axis_cfg["anchor"] = "free"
-                    axis_cfg["position"] = axis_positions[i]
-            layout_key = "yaxis" if ykey == "y" else f"yaxis{ykey[1:]}"
-            yaxis_layout[layout_key] = axis_cfg
 
+        # Stacked subplots layout：每帶 y 軸標單位、x 軸只在最後一帶顯示 title
         fig.update_layout(
             title="統計趨勢圖",
-            xaxis_title=x_label,
-            margin=dict(l=60, r=60, t=40, b=30),
-            **yaxis_layout,
+            height=chart_height,
+            margin=dict(l=60, r=20, t=50, b=40),
         )
+        for unit, row in unit_to_row.items():
+            fig.update_yaxes(title_text=unit or "數值", row=row, col=1)
+        fig.update_xaxes(title_text=x_label, row=n_rows, col=1)
         fig = apply_chart_theme(fig, theme_mode)
 
         # ===== 一般統計卡（有中文對照）=====

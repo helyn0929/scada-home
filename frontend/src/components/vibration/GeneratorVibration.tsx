@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const DE_COLOR = "#06E2F4";
 const NDE_COLOR = "#F46D06";
@@ -91,7 +91,7 @@ export default function GeneratorVibration() {
   const ndePath = pointsToPath(ndePoints, chartWidth, chartHeight, left, bottom);
 
   return (
-    <div className="inline-flex h-[158px] w-fit max-w-[480px] shrink-0 flex-col justify-self-start overflow-hidden rounded-[20px] bg-[#D9D9D9]/15 px-3 py-3">
+    <div className="inline-flex h-[158px] w-[296px] shrink-0 flex-col justify-self-start overflow-hidden rounded-[20px] bg-[#D9D9D9]/15 px-3 py-3">
       {/* Inner width = legend + chart; title bar matches that width */}
       <div className="flex w-max min-w-0 flex-col gap-3">
         <div className="w-fit shrink-0 rounded-[9px] bg-[#D9D9D9]/20 px-4 py-1.5 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]">
@@ -120,7 +120,7 @@ export default function GeneratorVibration() {
           </div>
         </div>
         {/* SVG width ≈ 80% of 320px viewBox width — chart fills wrapper; no extra gap past plot */}
-        <div className="flex h-full w-[256px] shrink-0 flex-col">
+        <div className="flex h-full w-[228px] shrink-0 flex-col">
           <svg
             viewBox="0 0 320 100"
             className="block h-full w-full"

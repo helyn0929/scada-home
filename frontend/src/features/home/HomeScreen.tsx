@@ -101,7 +101,7 @@ const STATUS_CONFIG = {
 };
 
 export default function HomeScreen() {
-  const { data, status } = useLiveTelemetry("/api/telemetry");
+  const { data, status, lastUpdated } = useLiveTelemetry("/api/telemetry");
   const { color, label } = STATUS_CONFIG[status];
   const [, setTurbineScenePreset] =
     useState<TurbineScenePresetId>("default");
@@ -134,6 +134,11 @@ export default function HomeScreen() {
       <div className="fixed bottom-4 right-4 flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 backdrop-blur-sm">
         <span className={`h-2 w-2 rounded-full ${color} ${status === "ok" ? "animate-pulse" : ""}`} />
         <span className="text-[11px] font-medium text-white/80">{label}</span>
+        {lastUpdated && (
+          <span className="text-[10px] text-white/40">
+            {lastUpdated.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          </span>
+        )}
       </div>
 
       {/* Scale-to-fit: fixed-width HMI canvas scales down on narrow viewports */}

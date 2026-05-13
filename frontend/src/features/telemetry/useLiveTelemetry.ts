@@ -6,6 +6,7 @@ export type ApiStatus = "connecting" | "ok" | "error";
 export function useLiveTelemetry(url: string) {
   const [data, setData] = useState<TelemetryData | null>(null);
   const [status, setStatus] = useState<ApiStatus>("connecting");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     const useMockData = import.meta.env.VITE_MOCK === "1";
@@ -65,6 +66,7 @@ export function useLiveTelemetry(url: string) {
         if (!ignore) {
           setData({ ...json });
           setStatus("ok");
+          setLastUpdated(new Date());
         }
       } catch {
         if (!ignore) setStatus("error");
@@ -80,5 +82,5 @@ export function useLiveTelemetry(url: string) {
     };
   }, [url]);
 
-  return { data, status };
+  return { data, status, lastUpdated };
 }

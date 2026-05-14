@@ -6,12 +6,13 @@ const MAX_POINTS = 80;
 const Y_MAX_MM_S = 5;
 const UPDATE_MS = 500;
 
-// Realistic low-amplitude vibration: stable baseline + small random walk (mm/s)
-function nextVibration(prev: number, base: number, spread: number): number {
+// Small visual jitter around the live telemetry value so the trace looks
+// alive between PLC polls. The center value is always the latest live reading
+// — this only smooths the path between updates, it doesn't fabricate readings.
+function jitterAround(centerLive: number): number {
   const drift = (Math.random() - 0.5) * 0.15;
-  const next = prev + drift;
-  const clamped = Math.max(base - spread, Math.min(base + spread, next));
-  return Math.max(0, Math.min(Y_MAX_MM_S, clamped));
+  const next = centerLive + drift;
+  return Math.max(0, Math.min(Y_MAX_MM_S, next));
 }
 
 function pointsToPath(
@@ -41,11 +42,12 @@ interface GeneratorVibrationProps {
 export default function GeneratorVibration({ vibrationDE, vibrationNDE }: GeneratorVibrationProps) {
   const [dePoints, setDePoints] = useState<Array<{ x: number; y: number }>>([]);
   const [ndePoints, setNdePoints] = useState<Array<{ x: number; y: number }>>([]);
-  const deLast = useRef(0);
-  const ndeLast = useRef(0);
+  const deLast = useRef<number | null>(null);
+  const ndeLast = useRef<number | null>(null);
   const [hasSeeded, setHasSeeded] = useState(false);
 
-  // Wait for first real data before seeding — avoids fake values showing then dropping
+  // Seed a flat line once at the first real reading so the chart starts
+  // as a straight line and only begins moving once telemetry arrives.
   useEffect(() => {
     if (hasSeeded) return;
     if (vibrationDE == null && vibrationNDE == null) return;
@@ -58,21 +60,25 @@ export default function GeneratorVibration({ vibrationDE, vibrationNDE }: Genera
     setHasSeeded(true);
   }, [vibrationDE, vibrationNDE, hasSeeded]);
 
+  // After seeding, redraw at UPDATE_MS using the latest live value as the
+  // center, with small jitter so the trace looks alive between PLC polls.
   useEffect(() => {
     if (!hasSeeded) return;
     const t = setInterval(() => {
       if (vibrationDE != null) {
+        const nextY = jitterAround(vibrationDE);
+        deLast.current = nextY;
         setDePoints((prev) => {
-          const nextY = nextVibration(vibrationDE, vibrationDE, 0.08);
-          deLast.current = nextY;
-          return [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }].map((p, i) => ({ ...p, x: i }));
+          const arr = [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }];
+          return arr.map((p, i) => ({ ...p, x: i }));
         });
       }
       if (vibrationNDE != null) {
+        const nextY = jitterAround(vibrationNDE);
+        ndeLast.current = nextY;
         setNdePoints((prev) => {
-          const nextY = nextVibration(vibrationNDE, vibrationNDE, 0.08);
-          ndeLast.current = nextY;
-          return [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }].map((p, i) => ({ ...p, x: i }));
+          const arr = [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }];
+          return arr.map((p, i) => ({ ...p, x: i }));
         });
       }
     }, UPDATE_MS);
@@ -110,7 +116,7 @@ export default function GeneratorVibration({ vibrationDE, vibrationNDE }: Genera
             />
             <span className="text-[11px] font-semibold text-white">DE</span>
             <span className="w-[32px] text-right text-[11px] font-semibold tabular-nums" style={{ color: DE_COLOR }}>
-              {vibrationDE != null ? deLast.current.toFixed(2) : "--"}
+              {deLast.current != null ? deLast.current.toFixed(2) : "--"}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -120,7 +126,7 @@ export default function GeneratorVibration({ vibrationDE, vibrationNDE }: Genera
             />
             <span className="text-[11px] font-semibold text-white">NDE</span>
             <span className="w-[32px] text-right text-[11px] font-semibold tabular-nums" style={{ color: NDE_COLOR }}>
-              {vibrationNDE != null ? ndeLast.current.toFixed(2) : "--"}
+              {ndeLast.current != null ? ndeLast.current.toFixed(2) : "--"}
             </span>
           </div>
         </div>

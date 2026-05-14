@@ -104,6 +104,30 @@ VIBRATION_MAPPING = {
     "vibrationNDE": "GEN_VIB_NDE",
 }
 
+# HPU1 / HPU2 tag_code 對應
+HPU_MAPPING = {
+    "hpu1Pressure":      "HPU_PRESS_TURB1",
+    "hpu1MotorOn":       "HPU_TURB_MOTOR",
+    "hpu1QsdValveOpen":  "HPU_TURB_QSD_VALVE",
+    "hpu2Pressure":      "HPU_PRESS_BYPASS2",
+    "hpu2MotorOn":       "HPU_BYPASS_MOTOR",
+    "hpu2Dn1400Open":    "HPU_BYPASS_DN1400_VALVE",
+}
+
+# 充水閥回饋 tag_code 對應
+FILLING_VALVE_MAPPING = {
+    "dn1400FillingInletOpen":  "VALVE_DN1400_IN_FILL_FB_OPEN",
+    "dn1400FillingOutletOpen": "VALVE_DN1400_OUT_FILL_FB_OPEN",
+    "dn900FillingValveOpen":   "VALVE_DN900_FILL_FB_OPEN",
+}
+
+# 廠房告警 tag_code 對應
+ALARM_MAPPING = {
+    "overpressureValveAlarm": "VALVE_OPV_ALARM",
+    "upsAlarm":               "SYS_UPS_ALARM",
+    "generalShutdownAlarm":   "SYS_SHUTDOWN_ALARM",
+}
+
 
 @app.route("/api/view/home")
 def view_home():
@@ -175,6 +199,25 @@ def view_home():
     # 振動
     for frontend_key, tag_code in VIBRATION_MAPPING.items():
         data[frontend_key] = raw.get(tag_code)
+
+    # HPU
+    for frontend_key, tag_code in HPU_MAPPING.items():
+        val = raw.get(tag_code)
+        if tag_code in ("HPU_TURB_MOTOR", "HPU_TURB_QSD_VALVE",
+                        "HPU_BYPASS_MOTOR", "HPU_BYPASS_DN1400_VALVE"):
+            data[frontend_key] = bool(val) if val is not None else None
+        else:
+            data[frontend_key] = val
+
+    # 充水閥
+    for frontend_key, tag_code in FILLING_VALVE_MAPPING.items():
+        val = raw.get(tag_code)
+        data[frontend_key] = bool(val) if val is not None else None
+
+    # 廠房告警
+    for frontend_key, tag_code in ALARM_MAPPING.items():
+        val = raw.get(tag_code)
+        data[frontend_key] = bool(val) if val is not None else None
 
     return jsonify(data)
 

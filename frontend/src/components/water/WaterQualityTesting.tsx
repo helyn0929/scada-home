@@ -3,7 +3,7 @@ import React from "react";
 const FILL_COLOR_NORMAL = "#06E2F4";
 const FILL_COLOR_ALARM = "#FE0C0C";
 const VALUE_MIN = 0;
-const VALUE_MAX = 0.3;
+const VALUE_MAX = 0.5;
 /** ppm at or above → bar turns red */
 const PPM_ALARM_AT = 0.3;
 
@@ -22,17 +22,21 @@ function QualityBarRow({
   line2,
   value,
   unit,
+  offset = 0,
 }: {
   line1: string;
   line2: string;
   value: number | null | undefined;
   unit: string;
+  /** Applied to raw value before display and bar fill (e.g. -0.08 for sensor calibration). */
+  offset?: number;
 }) {
-  const clamped = value != null ? clamp(value, VALUE_MIN, VALUE_MAX) : 0;
-  const outHigh = value != null && value > VALUE_MAX;
-  const outLow = value != null && value < VALUE_MIN;
+  const adjusted = value != null ? value + offset : null;
+  const clamped = adjusted != null ? clamp(adjusted, VALUE_MIN, VALUE_MAX) : 0;
+  const outHigh = adjusted != null && adjusted > VALUE_MAX;
+  const outLow = adjusted != null && adjusted < VALUE_MIN;
   const outOfRange = outHigh || outLow;
-  const fillWidth = value != null ? (BAR_WIDTH * clamped) / VALUE_MAX : 0;
+  const fillWidth = adjusted != null ? (BAR_WIDTH * clamped) / VALUE_MAX : 0;
   const fillColor = outOfRange
     ? FILL_COLOR_ALARM
     : clamped >= PPM_ALARM_AT
@@ -85,13 +89,13 @@ function QualityBarRow({
         <span
           className={`whitespace-nowrap text-right text-xs font-semibold tabular-nums leading-none ${outOfRange ? "text-[#FE0C0C]" : "text-white"}`}
         >
-          {value == null ? "--" : outOfRange ? value.toFixed(3) : clamped.toFixed(3)}
+          {adjusted == null ? "--" : outOfRange ? adjusted.toFixed(3) : clamped.toFixed(3)}
           {outOfRange ? (
             <span className="ml-0.5 text-[9px] font-bold text-[#FE0C0C]">
               {outHigh ? "HI" : "LO"}
             </span>
           ) : null}
-          {value != null && (
+          {adjusted != null && (
             <span
               className={`text-[10px] ${outOfRange ? "text-[#FE0C0C]/80" : "text-white/70"}`}
             >

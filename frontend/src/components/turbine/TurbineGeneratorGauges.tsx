@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import type { TurbineScenePresetId } from "@/components/three/turbineScenePresets";
 
 const NEEDLE_COLOR = "#06E2F4";
@@ -15,7 +15,7 @@ const WICKET_OPEN_MAX = 100;
 const WATER_FLOW_MIN = 0;
 const WATER_FLOW_MAX = 2.5;
 const GEN_RPM_MIN = 900;
-const GEN_RPM_MAX = 1200;
+const GEN_RPM_MAX = 1205;
 const GEN_SPEED_PCT_MIN = 80;
 const GEN_SPEED_PCT_MAX = 120;
 
@@ -31,7 +31,7 @@ const NOISE_INDOOR_ALARM = 100;
 const NOISE_OUTDOOR_WARN = 75;
 const NOISE_OUTDOOR_ALARM = 85;
 
-type HealthLevel = "normal" | "warning" | "alarm";
+export type HealthLevel = "normal" | "warning" | "alarm";
 
 const STATUS_COLOR: Record<HealthLevel, string> = {
   normal: "#06E2F4",
@@ -68,49 +68,6 @@ export interface TurbineGaugeTelemetry {
   tempEnvironment?: number;
 }
 
-function StatusRow({ label, level }: { label: string; level: HealthLevel }) {
-  const color = STATUS_COLOR[level];
-  return (
-    <div className="flex items-center justify-between w-full">
-      <span className="text-[12px] font-semibold text-white leading-none">{label}</span>
-      <div className="flex items-center gap-1.5">
-        <span
-          className="text-[10px] font-semibold leading-none"
-          style={{ color, transition: "color 0.4s" }}
-        >
-          {STATUS_LABEL[level]}
-        </span>
-        <div
-          className="h-2 w-2 rounded-full shrink-0"
-          style={{ backgroundColor: color, boxShadow: `0 0 4px ${color}`, transition: "background-color 0.4s, box-shadow 0.4s" }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function PowerhouseStatusPanel({
-  hydraulic,
-  electrical,
-  environment,
-}: {
-  hydraulic: HealthLevel;
-  electrical: HealthLevel;
-  environment: HealthLevel;
-}) {
-  return (
-    <div className="flex h-full min-h-0 flex-1 flex-col items-stretch justify-between rounded-[14px] bg-[#D9D9D9]/20 px-3 py-2.5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]">
-      <span className="text-center text-[9px] font-semibold uppercase tracking-widest text-white/50">
-        Powerhouse
-      </span>
-      <div className="flex flex-col gap-[6px]">
-        <StatusRow label="Hydraulic" level={hydraulic} />
-        <StatusRow label="Electrical" level={electrical} />
-        <StatusRow label="Environment" level={environment} />
-      </div>
-    </div>
-  );
-}
 
 /** Semicircular tick dial (84×52) — provided design */
 const DIAL_VIEWBOX = "0 0 84 52";
@@ -270,8 +227,10 @@ interface TurbineGeneratorGaugesProps {
   genSpeedPct?: number;
   /** Focus hydraulic (water / wicket) or generator (RPM / speed) in the 3D view. */
   onFocusScene?: (scene: TurbineGaugeScene) => void;
-  /** Live telemetry feeding the powerhouse status panel. */
+  /** Live telemetry for health-level computation. */
   telemetry?: TurbineGaugeTelemetry;
+  /** Receive computed health levels (for external PowerhouseStatusPanel). */
+  onHealthChange?: (hydraulic: HealthLevel, electrical: HealthLevel, environment: HealthLevel) => void;
 }
 
 export default function TurbineGeneratorGauges({
@@ -281,6 +240,7 @@ export default function TurbineGeneratorGauges({
   genSpeedPct,
   onFocusScene,
   telemetry,
+  onHealthChange,
 }: TurbineGeneratorGaugesProps) {
   // ── Health computation ──────────────────────────────────────────────
   const hydraulicHealth = worstLevel(
@@ -303,11 +263,15 @@ export default function TurbineGeneratorGauges({
     thresholdLevel(telemetry?.tempEnvironment, AMBIENT_TEMP_WARN, AMBIENT_TEMP_ALARM),
   );
 
+  useEffect(() => {
+    onHealthChange?.(hydraulicHealth, electricalHealth, environmentHealth);
+  }, [hydraulicHealth, electricalHealth, environmentHealth, onHealthChange]);
+
   const pairClass =
     "grid h-full min-h-0 w-[236px] min-w-[236px] shrink-0 grid-cols-2 gap-2 place-items-center px-3 py-1 rounded-[14px] bg-[#D9D9D9]/20 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]";
 
   return (
-    <div className="inline-flex h-[96px] min-h-[96px] max-h-[96px] w-[800px] min-w-[800px] max-w-[800px] shrink-0 items-stretch gap-2">
+    <div className="inline-flex h-[96px] min-h-[96px] max-h-[96px] w-[480px] min-w-[480px] max-w-[480px] shrink-0 items-stretch gap-2">
       <div className={pairClass}>
         <TurbineGaugeDial
           value={waterFlow}
@@ -359,11 +323,6 @@ export default function TurbineGeneratorGauges({
           }
         />
       </div>
-      <PowerhouseStatusPanel
-        hydraulic={hydraulicHealth}
-        electrical={electricalHealth}
-        environment={environmentHealth}
-      />
     </div>
   );
 }

@@ -56,4 +56,24 @@ export interface TelemetryData {
   // 🔹 水質
   waterQualityIn?: number;   // ppm, 入水水質
   waterQualityOut?: number;  // ppm, 出水水質
+
+  // 🔹 HPU1 (turbine hydraulic)
+  hpu1Pressure?: number;       // bar
+  hpu1MotorOn?: boolean;
+  hpu1QsdValveOpen?: boolean;
+
+  // 🔹 HPU2 (bypass hydraulic)
+  hpu2Pressure?: number;       // bar
+  hpu2MotorOn?: boolean;
+  hpu2Dn1400Open?: boolean;
+
+  // 🔹 Filling valve feedbacks
+  dn1400FillingInletOpen?: boolean;
+  dn1400FillingOutletOpen?: boolean;
+  dn900FillingValveOpen?: boolean;
+
+  // 🔹 Powerhouse alarms
+  overpressureValveAlarm?: boolean;
+  upsAlarm?: boolean;
+  generalShutdownAlarm?: boolean;
 }

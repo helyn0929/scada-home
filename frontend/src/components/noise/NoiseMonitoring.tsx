@@ -1,8 +1,7 @@
-import React from "react";
-
 type NoiseMonitoringProps = {
   indoorNoise: number | undefined | null;
   outdoorNoise: number | undefined | null;
+  className?: string;
 };
 
 function clampNoise(value: number | undefined | null): number {
@@ -121,6 +120,7 @@ function NoiseChart({ indoor, outdoor }: NoiseChartProps) {
 export default function NoiseMonitoring({
   indoorNoise,
   outdoorNoise,
+  className,
 }: NoiseMonitoringProps) {
   const indoorDisplay = noiseDisplayText(indoorNoise);
   const outdoorDisplay = noiseDisplayText(outdoorNoise);
@@ -142,7 +142,7 @@ export default function NoiseMonitoring({
     outdoorNoise < NOISE_DB_MIN;
 
   return (
-    <div className="w-[240px] h-[158px] shrink-0 rounded-[20px] bg-[#D9D9D9]/15 px-4 py-3 flex flex-col overflow-hidden">
+    <div className={["h-[158px] rounded-[20px] bg-[#D9D9D9]/15 px-4 py-3 flex flex-col overflow-hidden", className].filter(Boolean).join(" ")}>
       {/* Topic bar (Rectangle 29 + label) */}
       <div className="mb-3 w-fit shrink-0 flex items-center rounded-[9px] bg-[#D9D9D9]/20 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)] px-4 py-1.5">
         <span className="font-semibold text-[15px] leading-[18px] text-white truncate">

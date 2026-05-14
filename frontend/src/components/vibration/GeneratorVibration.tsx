@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const DE_COLOR = "#06E2F4";
 const NDE_COLOR = "#F46D06";
@@ -33,7 +33,15 @@ function pointsToPath(
   return d;
 }
 
-export default function GeneratorVibration() {
+export default function GeneratorVibration({
+  className,
+  de: liveDe,
+  nde: liveNde,
+}: {
+  className?: string;
+  de?: number;
+  nde?: number;
+}) {
   const [dePoints, setDePoints] = useState<Array<{ x: number; y: number }>>([]);
   const [ndePoints, setNdePoints] = useState<Array<{ x: number; y: number }>>([]);
   const deLast = useRef(1.4);
@@ -61,24 +69,18 @@ export default function GeneratorVibration() {
     if (dePoints.length === 0) return;
     const t = setInterval(() => {
       setDePoints((prev) => {
-        const nextY = nextVibration(deLast.current, 1.4, 0.6);
+        const nextY = liveDe !== undefined ? liveDe : nextVibration(deLast.current, 1.4, 0.6);
         deLast.current = nextY;
-        const next = [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }].map(
-          (p, i) => ({ ...p, x: i })
-        );
-        return next;
+        return [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }].map((p, i) => ({ ...p, x: i }));
       });
       setNdePoints((prev) => {
-        const nextY = nextVibration(ndeLast.current, 1.8, 0.5);
+        const nextY = liveNde !== undefined ? liveNde : nextVibration(ndeLast.current, 1.8, 0.5);
         ndeLast.current = nextY;
-        const next = [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }].map(
-          (p, i) => ({ ...p, x: i })
-        );
-        return next;
+        return [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }].map((p, i) => ({ ...p, x: i }));
       });
     }, UPDATE_MS);
     return () => clearInterval(t);
-  }, [dePoints.length]);
+  }, [dePoints.length, liveDe, liveNde]);
 
   const chartWidth = 268;
   const chartHeight = 58;
@@ -91,17 +93,16 @@ export default function GeneratorVibration() {
   const ndePath = pointsToPath(ndePoints, chartWidth, chartHeight, left, bottom);
 
   return (
-    <div className="inline-flex h-[158px] w-fit max-w-[480px] shrink-0 flex-col justify-self-start overflow-hidden rounded-[20px] bg-[#D9D9D9]/15 px-3 py-3">
-      {/* Inner width = legend + chart; title bar matches that width */}
-      <div className="flex w-max min-w-0 flex-col gap-3">
+    <div className={["flex flex-col overflow-hidden rounded-[20px] bg-[#D9D9D9]/15 px-3 py-3", className ?? "h-[158px] w-[296px] shrink-0"].join(" ")}>
+      <div className="flex flex-col flex-1 min-h-0 min-w-0 gap-3">
         <div className="w-fit shrink-0 rounded-[9px] bg-[#D9D9D9]/20 px-4 py-1.5 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]">
           <span className="font-semibold text-[15px] leading-[18px] text-white">
             Generator Vibration
           </span>
         </div>
 
-      {/* Chart area: legend + fixed-width SVG so card edge matches line chart edge */}
-      <div className="flex min-h-0 w-fit flex-row items-stretch gap-1">
+      {/* Chart area: legend + SVG */}
+      <div className="flex flex-1 min-h-0 min-w-0 flex-row items-stretch gap-1">
         {/* DE / NDE stacked on left */}
         <div className="flex shrink-0 flex-col justify-center gap-2 py-0.5">
           <div className="flex items-center gap-1.5">
@@ -119,12 +120,11 @@ export default function GeneratorVibration() {
             <span className="text-[11px] font-semibold text-white">NDE</span>
           </div>
         </div>
-        {/* SVG width ≈ 80% of 320px viewBox width — chart fills wrapper; no extra gap past plot */}
-        <div className="flex h-full w-[256px] shrink-0 flex-col">
+        <div className="flex flex-1 min-h-0 min-w-0 flex-col">
           <svg
             viewBox="0 0 320 100"
             className="block h-full w-full"
-            preserveAspectRatio="xMidYMid meet"
+            preserveAspectRatio="none"
           >
           {/* Inner panel background — spans chart area, fits card */}
           <rect

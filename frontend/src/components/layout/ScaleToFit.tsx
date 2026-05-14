@@ -54,7 +54,7 @@ export default function ScaleToFit({
       const rawH = baseH > 0 ? availH / baseH : 1;
       const raw = Math.min(rawW, rawH);
       // For true fit-to-height, keep minScale at 0 (or very low), otherwise the canvas will clip.
-      const scale = Math.min(1, Math.max(minScale, raw));
+      const scale = Math.max(minScale, raw);
       const overflowX = scale * designWidth > availW + 0.5;
       const scaledHeight = unscaledH * scale;
       setLayout({ scale, scaledHeight, overflowX });

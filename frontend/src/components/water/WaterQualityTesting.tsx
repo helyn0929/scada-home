@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 const FILL_COLOR_NORMAL = "#06E2F4";
 const FILL_COLOR_ALARM = "#FE0C0C";
 // Oil-in-water display range (ppm)
-const VALUE_MIN = 1;
-const VALUE_MAX = 10;
+const VALUE_MIN = 0.1;
+const VALUE_MAX = 0.5;
 /** ppm at or above → bar turns red */
-const PPM_ALARM_AT = 10;
+const PPM_ALARM_AT = 0.49;
 /** Only show HI/LO if the reading is truly implausible (not just above display max). */
-const SENSOR_MIN = 1;
-const SENSOR_MAX = 10;
+const SENSOR_MIN = 0.1;
+const SENSOR_MAX = 0.5;
 const UPDATE_MS = 1000;
 
 const BAR_WIDTH = 118;
@@ -62,10 +62,9 @@ function QualityBarRow({
       </span>
       <svg
         viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        className="block h-auto min-w-0 flex-1 max-w-[92px]"
-        width={CHART_WIDTH}
-        height={CHART_HEIGHT}
-        preserveAspectRatio="xMidYMid meet"
+        className="block min-w-0 flex-1"
+        style={{ height: CHART_HEIGHT }}
+        preserveAspectRatio="none"
         aria-hidden
       >
         <line
@@ -139,25 +138,37 @@ export function WaterQualityTestingTitle() {
   );
 }
 
-type WaterQualityTestingProps = { hideTitle?: boolean };
+type WaterQualityTestingProps = {
+  hideTitle?: boolean;
+  className?: string;
+  beforeDn900?: number;
+  afterDn1400d?: number;
+};
 
 export default function WaterQualityTesting({
   hideTitle = false,
+  className,
+  beforeDn900: liveBefore,
+  afterDn1400d: liveAfter,
 }: WaterQualityTestingProps) {
-  const [ppmBeforeDn900, setPpmBeforeDn900] = useState(1.2);
-  const [ppmAfterDn1400d, setPpmAfterDn1400d] = useState(1.0);
+  const [simBefore, setSimBefore] = useState(0.22);
+  const [simAfter, setSimAfter] = useState(0.18);
 
   useEffect(() => {
+    if (liveBefore !== undefined && liveAfter !== undefined) return;
     const id = window.setInterval(() => {
-      setPpmBeforeDn900((v) => bump(v, 0.3));
-      setPpmAfterDn1400d((v) => bump(v, 0.3));
+      setSimBefore((v) => bump(v, 0.06));
+      setSimAfter((v) => bump(v, 0.06));
     }, UPDATE_MS);
     return () => window.clearInterval(id);
-  }, []);
+  }, [liveBefore, liveAfter]);
+
+  const ppmBeforeDn900 = liveBefore ?? simBefore;
+  const ppmAfterDn1400d = liveAfter ?? simAfter;
 
   return (
     <div
-      className={`flex min-h-[96px] w-[240px] shrink-0 flex-col rounded-[20px] px-3 ${hideTitle ? "pb-3 pt-0" : "py-3"}`}
+      className={["flex min-h-[96px] flex-col rounded-[20px] px-3", hideTitle ? "pb-3 pt-0" : "py-3", className].filter(Boolean).join(" ")}
     >
       {!hideTitle ? (
         <div className="mb-1 shrink-0">

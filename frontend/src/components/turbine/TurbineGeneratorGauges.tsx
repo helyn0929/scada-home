@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TurbineScenePresetId } from "@/components/three/turbineScenePresets";
 
 const NEEDLE_COLOR = "#06E2F4";
 const NEEDLE_COLOR_ALARM = "#FE0C0C";
 const ALARM_RPM_BELOW = 1080;
+const ALARM_RPM_ABOVE = 1205;
 const ALARM_SPEED_PCT_BELOW = 90;
 const WICKET_OPEN_MIN = 0;
 const WICKET_OPEN_MAX = 100;
@@ -11,7 +12,7 @@ const WICKET_OPEN_MAX = 100;
 const WATER_FLOW_MIN = 0;
 const WATER_FLOW_MAX = 2.5;
 const GEN_RPM_MIN = 900;
-const GEN_RPM_MAX = 1200;
+const GEN_RPM_MAX = 1205;
 const GEN_SPEED_PCT_MIN = 80;
 const GEN_SPEED_PCT_MAX = 120;
 
@@ -42,7 +43,7 @@ const UPDATE_MS = 1000;
 
 // ── Health level helpers ──────────────────────────────────────────────────────
 
-type HealthLevel = "normal" | "warning" | "alarm";
+export type HealthLevel = "normal" | "warning" | "alarm";
 
 const STATUS_COLOR: Record<HealthLevel, string> = {
   normal: "#06E2F4",
@@ -79,6 +80,10 @@ export interface TurbineGaugeTelemetry {
   noiseOutdoor?: number;
   tempControlPanel?: number;
   tempEnvironment?: number;
+  waterFlowCms?: number;
+  wicketGatePct?: number;
+  genRpm?: number;
+  genSpeedPct?: number;
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -92,10 +97,10 @@ function bump(prev: number, min: number, max: number, spread: number): number {
   return clamp(prev + delta, min, max);
 }
 
-function StatusRow({ label, level }: { label: string; level: HealthLevel }) {
+function HealthCell({ label, level }: { label: string; level: HealthLevel }) {
   const color = STATUS_COLOR[level];
   return (
-    <div className="flex items-center justify-between w-full">
+    <div className="flex items-center justify-between">
       <span className="text-[12px] font-semibold text-white leading-none">{label}</span>
       <div className="flex items-center gap-1.5">
         <span
@@ -113,24 +118,58 @@ function StatusRow({ label, level }: { label: string; level: HealthLevel }) {
   );
 }
 
-function PowerhouseStatusPanel({
+function AlarmCell({ label, alarm }: { label: string; alarm?: boolean }) {
+  const color = alarm ? "#FE0C0C" : "#06E2F4";
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <span className="text-[9px] font-medium leading-none text-white/50 whitespace-nowrap">
+        {label}
+      </span>
+      <span
+        className="text-[10px] font-bold leading-none"
+        style={{ color, transition: "color 0.4s" }}
+      >
+        {alarm ? "ON" : "OFF"}
+      </span>
+      <div
+        className="h-2 w-2 rounded-full shrink-0"
+        style={{ backgroundColor: color, boxShadow: `0 0 4px ${color}`, transition: "background-color 0.4s, box-shadow 0.4s" }}
+      />
+    </div>
+  );
+}
+
+export function PowerhouseStatusPanel({
   hydraulic,
   electrical,
   environment,
+  overpressureAlarm,
+  upsAlarm,
+  generalShutdownAlarm,
+  className = "",
 }: {
   hydraulic: HealthLevel;
   electrical: HealthLevel;
   environment: HealthLevel;
+  overpressureAlarm?: boolean;
+  upsAlarm?: boolean;
+  generalShutdownAlarm?: boolean;
+  className?: string;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col items-stretch justify-between rounded-[14px] bg-[#D9D9D9]/20 px-3 py-2.5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]">
-      <span className="text-center text-[9px] font-semibold uppercase tracking-widest text-white/50">
-        Powerhouse
-      </span>
-      <div className="flex flex-col gap-[6px]">
-        <StatusRow label="Hydraulic" level={hydraulic} />
-        <StatusRow label="Electrical" level={electrical} />
-        <StatusRow label="Environment" level={environment} />
+    <div className={["flex min-h-0 flex-col items-stretch justify-between rounded-[14px] bg-[#D9D9D9]/20 px-3 py-2.5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]", className].join(" ")}>
+      <div className="mb-1 shrink-0 flex justify-center">
+        <span className="whitespace-nowrap font-semibold text-[15px] leading-[18px] text-white">
+          Powerhouse Status Overview
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-[6px]">
+        <HealthCell label="Hydraulic"   level={hydraulic} />
+        <AlarmCell  label="Overpressure alarm" alarm={overpressureAlarm} />
+        <HealthCell label="Electrical"  level={electrical} />
+        <AlarmCell  label="UPS alarm"         alarm={upsAlarm} />
+        <HealthCell label="Environment" level={environment} />
+        <AlarmCell  label="General shutdown"  alarm={generalShutdownAlarm} />
       </div>
     </div>
   );
@@ -268,24 +307,40 @@ export type TurbineGaugeScene = Exclude<TurbineScenePresetId, "default">;
 export default function TurbineGeneratorGauges({
   onFocusScene,
   telemetry,
+  hidePanel = false,
+  onHealthChange,
 }: {
   onFocusScene?: (scene: TurbineGaugeScene) => void;
   telemetry?: TurbineGaugeTelemetry;
+  hidePanel?: boolean;
+  onHealthChange?: (hydraulic: HealthLevel, electrical: HealthLevel, environment: HealthLevel) => void;
 }) {
-  const [waterCms, setWaterCms] = useState(1.2);
-  const [wicketPct, setWicketPct] = useState(42);
-  const [speedRpm, setSpeedRpm] = useState(720);
-  const [speedPct, setSpeedPct] = useState(98);
+  const [simWaterCms, setSimWaterCms] = useState(1.2);
+  const [simWicketPct, setSimWicketPct] = useState(42);
+  const [simSpeedRpm, setSimSpeedRpm] = useState(720);
+  const [simSpeedPct, setSimSpeedPct] = useState(98);
+
+  const hasLiveGauges =
+    telemetry?.waterFlowCms !== undefined ||
+    telemetry?.wicketGatePct !== undefined ||
+    telemetry?.genRpm !== undefined ||
+    telemetry?.genSpeedPct !== undefined;
 
   useEffect(() => {
+    if (hasLiveGauges) return;
     const id = window.setInterval(() => {
-      setWaterCms((v) => bump(v, WATER_FLOW_MIN, WATER_FLOW_MAX, 0.25));
-      setWicketPct((v) => bump(v, -4, 104, 12));
-      setSpeedRpm((v) => bump(v, GEN_RPM_MIN - 80, GEN_RPM_MAX + 80, 45));
-      setSpeedPct((v) => bump(v, GEN_SPEED_PCT_MIN - 10, GEN_SPEED_PCT_MAX + 10, 4));
+      setSimWaterCms((v) => bump(v, WATER_FLOW_MIN, WATER_FLOW_MAX, 0.25));
+      setSimWicketPct((v) => bump(v, -4, 104, 12));
+      setSimSpeedRpm((v) => bump(v, GEN_RPM_MIN - 80, GEN_RPM_MAX + 80, 45));
+      setSimSpeedPct((v) => bump(v, GEN_SPEED_PCT_MIN - 10, GEN_SPEED_PCT_MAX + 10, 4));
     }, UPDATE_MS);
     return () => window.clearInterval(id);
-  }, []);
+  }, [hasLiveGauges]);
+
+  const waterCms = telemetry?.waterFlowCms ?? simWaterCms;
+  const wicketPct = telemetry?.wicketGatePct ?? simWicketPct;
+  const speedRpm = telemetry?.genRpm ?? simSpeedRpm;
+  const speedPct = telemetry?.genSpeedPct ?? simSpeedPct;
 
   // ── Health computation ──────────────────────────────────────────────────────
   const hydraulicHealth = worstLevel(
@@ -294,7 +349,7 @@ export default function TurbineGeneratorGauges({
   );
 
   const electricalHealth = worstLevel(
-    speedRpm < ALARM_RPM_BELOW ? "alarm" : "normal",
+    speedRpm < ALARM_RPM_BELOW || speedRpm > ALARM_RPM_ABOVE ? "alarm" : "normal",
     speedPct < ALARM_SPEED_PCT_BELOW ? "alarm" : "normal",
     thresholdLevel(telemetry?.tempWindingU, WINDING_TEMP_WARN, WINDING_TEMP_ALARM),
     thresholdLevel(telemetry?.tempWindingV, WINDING_TEMP_WARN, WINDING_TEMP_ALARM),
@@ -308,11 +363,18 @@ export default function TurbineGeneratorGauges({
     thresholdLevel(telemetry?.tempEnvironment, AMBIENT_TEMP_WARN, AMBIENT_TEMP_ALARM),
   );
 
+  // Notify parent whenever health changes (stable ref avoids dep-array churn)
+  const onHealthChangeRef = useRef(onHealthChange);
+  useEffect(() => { onHealthChangeRef.current = onHealthChange; });
+  useEffect(() => {
+    onHealthChangeRef.current?.(hydraulicHealth, electricalHealth, environmentHealth);
+  }, [hydraulicHealth, electricalHealth, environmentHealth]);
+
   const pairClass =
     "grid h-full min-h-0 w-[236px] min-w-[236px] shrink-0 grid-cols-2 gap-2 place-items-center px-3 py-1 rounded-[14px] bg-[#D9D9D9]/20 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]";
 
   return (
-    <div className="inline-flex h-[96px] min-h-[96px] max-h-[96px] w-[800px] min-w-[800px] max-w-[800px] shrink-0 items-stretch gap-2">
+    <div className={["flex h-[96px] min-h-[96px] max-h-[96px] shrink-0 items-stretch gap-2", hidePanel ? "w-fit" : "w-full min-w-0"].join(" ")}>
       <div className={pairClass}>
         <TurbineGaugeDial
           value={waterCms}
@@ -342,7 +404,7 @@ export default function TurbineGeneratorGauges({
           label="Gen RPM"
           unit="rpm"
           formatValue={(v) => v.toFixed(0)}
-          alarm={speedRpm < ALARM_RPM_BELOW}
+          alarm={speedRpm < ALARM_RPM_BELOW || speedRpm > ALARM_RPM_ABOVE}
           onActivate={onFocusScene ? () => onFocusScene("generator") : undefined}
         />
         <TurbineGaugeDial
@@ -356,11 +418,14 @@ export default function TurbineGeneratorGauges({
           onActivate={onFocusScene ? () => onFocusScene("generator") : undefined}
         />
       </div>
-      <PowerhouseStatusPanel
-        hydraulic={hydraulicHealth}
-        electrical={electricalHealth}
-        environment={environmentHealth}
-      />
+      {!hidePanel && (
+        <PowerhouseStatusPanel
+          hydraulic={hydraulicHealth}
+          electrical={electricalHealth}
+          environment={environmentHealth}
+          className="flex-1 h-full"
+        />
+      )}
     </div>
   );
 }

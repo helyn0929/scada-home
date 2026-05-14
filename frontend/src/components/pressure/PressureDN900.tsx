@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 const FILL_COLOR_NORMAL = "#06E2F4";
 const FILL_COLOR_ALARM = "#FE0C0C";
@@ -52,10 +52,9 @@ function PressureBarRow({
       </span>
       <svg
         viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        className="block h-auto min-w-0 flex-1 max-w-[92px]"
-        width={CHART_WIDTH}
-        height={CHART_HEIGHT}
-        preserveAspectRatio="xMidYMid meet"
+        className="block min-w-0 flex-1"
+        style={{ height: CHART_HEIGHT }}
+        preserveAspectRatio="none"
         aria-hidden
       >
           <line
@@ -118,25 +117,37 @@ export function PressureDN900Title() {
   );
 }
 
-type PressureDN900Props = { hideTitle?: boolean };
+type PressureDN900Props = {
+  hideTitle?: boolean;
+  className?: string;
+  upstream?: number;
+  downstream?: number;
+};
 
 export default function PressureDN900({
   hideTitle = false,
+  className,
+  upstream: liveUpstream,
+  downstream: liveDownstream,
 }: PressureDN900Props) {
-  const [pressureBeforeDn900, setPressureBeforeDn900] = useState(5.2);
-  const [pressureAfterDn900, setPressureAfterDn900] = useState(4.6);
+  const [simUpstream, setSimUpstream] = useState(5.2);
+  const [simDownstream, setSimDownstream] = useState(4.6);
 
   useEffect(() => {
+    if (liveUpstream !== undefined && liveDownstream !== undefined) return;
     const id = window.setInterval(() => {
-      setPressureBeforeDn900((v) => bump(v, 0.45));
-      setPressureAfterDn900((v) => bump(v, 0.4));
+      setSimUpstream((v) => bump(v, 0.45));
+      setSimDownstream((v) => bump(v, 0.4));
     }, UPDATE_MS);
     return () => window.clearInterval(id);
-  }, []);
+  }, [liveUpstream, liveDownstream]);
+
+  const pressureBeforeDn900 = liveUpstream ?? simUpstream;
+  const pressureAfterDn900 = liveDownstream ?? simDownstream;
 
   return (
     <div
-      className={`flex min-h-[96px] w-[240px] shrink-0 flex-col rounded-[20px] px-3 ${hideTitle ? "pb-3 pt-0" : "py-3"}`}
+      className={["flex min-h-[96px] flex-col rounded-[20px] px-3", hideTitle ? "pb-3 pt-0" : "py-3", className].filter(Boolean).join(" ")}
     >
       {!hideTitle ? (
         <div className="mb-1 shrink-0">

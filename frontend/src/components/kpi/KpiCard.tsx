@@ -6,11 +6,12 @@ type Props = {
   label: string
   value: string | number
   unit?: string
+  className?: string
 }
 
-export default function KpiCard({ icon, label, value, unit }: Props) {
+export default function KpiCard({ icon, label, value, unit, className = "" }: Props) {
   return (
-    <Card className="w-[240px] h-[96px] rounded-[24px] border border-black bg-white/15 shadow-[0_4px_4px_rgba(0,0,0,0.25)] text-white">
+    <Card className={`w-full h-[96px] rounded-[24px] border border-black bg-white/15 shadow-[0_4px_4px_rgba(0,0,0,0.25)] text-white ${className}`}>
       {/* FLEX ROW: icon + text side by side, aligned vertically center */}
       <CardContent className="h-full p-4 flex items-center gap-4">
         

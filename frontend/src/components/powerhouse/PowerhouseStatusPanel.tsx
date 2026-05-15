@@ -1,15 +1,17 @@
-export type HealthLevel = "normal" | "warning" | "alarm";
+export type HealthLevel = "normal" | "warning" | "alarm" | "unknown";
 
 const STATUS_COLOR: Record<HealthLevel, string> = {
   normal: "#06E2F4",
   warning: "#FACC15",
   alarm: "#FE0C0C",
+  unknown: "#6B7280",
 };
 
 const STATUS_LABEL: Record<HealthLevel, string> = {
   normal: "Normal",
   warning: "Warning",
   alarm: "Alarm",
+  unknown: "--",
 };
 
 function HealthCell({ label, level }: { label: string; level: HealthLevel }) {
@@ -34,7 +36,9 @@ function HealthCell({ label, level }: { label: string; level: HealthLevel }) {
 }
 
 function AlarmCell({ label, alarm }: { label: string; alarm?: boolean }) {
-  const color = alarm ? "#FE0C0C" : "#06E2F4";
+  const hasData = alarm !== undefined;
+  const color = !hasData ? "#6B7280" : alarm ? "#FE0C0C" : "#06E2F4";
+  const text  = !hasData ? "--" : alarm ? "ON" : "OFF";
   return (
     <div className="flex items-center justify-end gap-1">
       <span className="text-[9px] font-medium leading-none text-white/50 whitespace-nowrap">
@@ -44,7 +48,7 @@ function AlarmCell({ label, alarm }: { label: string; alarm?: boolean }) {
         className="text-[10px] font-bold leading-none"
         style={{ color, transition: "color 0.4s" }}
       >
-        {alarm ? "ON" : "OFF"}
+        {text}
       </span>
       <div
         className="h-2 w-2 rounded-full shrink-0"
@@ -55,9 +59,9 @@ function AlarmCell({ label, alarm }: { label: string; alarm?: boolean }) {
 }
 
 export default function PowerhouseStatusPanel({
-  hydraulic = "normal",
-  electrical = "normal",
-  environment = "normal",
+  hydraulic = "unknown",
+  electrical = "unknown",
+  environment = "unknown",
   overpressureAlarm,
   upsAlarm,
   generalShutdownAlarm,

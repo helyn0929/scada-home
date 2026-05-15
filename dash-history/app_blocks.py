@@ -79,11 +79,12 @@ def render_page(n0, n1):
 
 
 @app.callback(
-    Output("charts-zone", "style"),
-    Output("table-zone", "style"),
-    Output("action-bar", "style"),
-    Output("stats-summary", "style"),
+    Output("charts-zone", "style", allow_duplicate=True),
+    Output("table-zone", "style", allow_duplicate=True),
+    Output("action-bar", "style", allow_duplicate=True),
+    Output("stats-summary", "style", allow_duplicate=True),
     Input("result-ready", "data"),
+    prevent_initial_call='initial_duplicate',
 )
 def toggle_sections(ready):
     hide       = {"display": "none"}

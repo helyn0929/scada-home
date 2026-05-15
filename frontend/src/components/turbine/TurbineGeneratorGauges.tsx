@@ -31,28 +31,31 @@ const NOISE_INDOOR_ALARM = 100;
 const NOISE_OUTDOOR_WARN = 75;
 const NOISE_OUTDOOR_ALARM = 85;
 
-export type HealthLevel = "normal" | "warning" | "alarm";
+export type HealthLevel = "normal" | "warning" | "alarm" | "unknown";
 
 const STATUS_COLOR: Record<HealthLevel, string> = {
   normal: "#06E2F4",
   warning: "#FACC15",
   alarm: "#FE0C0C",
+  unknown: "#6B7280",
 };
 
 const STATUS_LABEL: Record<HealthLevel, string> = {
   normal: "Normal",
   warning: "Warning",
   alarm: "Alarm",
+  unknown: "--",
 };
 
 function worstLevel(...levels: HealthLevel[]): HealthLevel {
   if (levels.includes("alarm")) return "alarm";
   if (levels.includes("warning")) return "warning";
+  if (levels.every(l => l === "unknown")) return "unknown";
   return "normal";
 }
 
 function thresholdLevel(v: number | undefined, warnAt: number, alarmAt: number): HealthLevel {
-  if (v == null) return "normal";
+  if (v == null) return "unknown";
   if (v >= alarmAt) return "alarm";
   if (v >= warnAt) return "warning";
   return "normal";

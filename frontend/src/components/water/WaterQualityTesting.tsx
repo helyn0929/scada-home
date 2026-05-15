@@ -5,7 +5,7 @@ const FILL_COLOR_ALARM = "#FE0C0C";
 const VALUE_MIN = 0;
 const VALUE_MAX = 0.5;
 /** ppm at or above → bar turns red */
-const PPM_ALARM_AT = 0.3;
+const PPM_ALARM_AT = 0.5;
 
 const BAR_WIDTH = 118;
 const BAR_HEIGHT = 10;
@@ -112,7 +112,7 @@ export function WaterQualityTestingTitle() {
   return (
     <div className="inline-flex w-fit shrink-0 items-center rounded-[9px] bg-[#D9D9D9]/20 px-4 py-1.5 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]">
       <span className="whitespace-nowrap font-semibold text-[15px] leading-[18px] text-white">
-        Water Quality
+        Oil in Water
       </span>
     </div>
   );
@@ -122,16 +122,18 @@ type WaterQualityTestingProps = {
   hideTitle?: boolean;
   waterQualityIn?: number;
   waterQualityOut?: number;
+  className?: string;
 };
 
 export default function WaterQualityTesting({
   hideTitle = false,
   waterQualityIn,
   waterQualityOut,
+  className = "",
 }: WaterQualityTestingProps) {
   return (
     <div
-      className={`flex min-h-[96px] w-[240px] shrink-0 flex-col rounded-[20px] px-3 ${hideTitle ? "pb-3 pt-0" : "py-3"}`}
+      className={`flex min-h-[96px] w-full min-w-0 flex-col rounded-[20px] px-3 ${hideTitle ? "pb-3 pt-0" : "py-3"} ${className}`}
     >
       {!hideTitle ? (
         <div className="mb-1 shrink-0">

@@ -1,5 +1,6 @@
 # callbacks/compare_dates.py
 from dash import Input, Output, State, no_update
+from dash.exceptions import PreventUpdate
 from datetime import date
 from dateutil.relativedelta import relativedelta
 import calendar
@@ -32,6 +33,12 @@ def _shift_months(s: date, e: date, months: int):
 
 def _shift_years(s: date, e: date, years: int):
     return s - relativedelta(years=years), e - relativedelta(years=years)
+
+def _days_count(start, end):
+    s, e = _parse(start), _parse(end)
+    if not (s and e):
+        return None
+    return (e - s).days + 1
 
 def _compute_compare_range(mode: str, base_start, base_end):
     """
@@ -114,8 +121,16 @@ def register_callbacks(app):
         if mode == "custom":
             # 讓使用者選；保留已選值
             disabled = False
-            hint = "請選擇比較區間"
             cmp_s, cmp_e = cmp_s_state, cmp_e_state
+            base_days = _days_count(base_start, base_end)
+            cmp_days = _days_count(cmp_s, cmp_e)
+            if not (cmp_s and cmp_e):
+                hint = f"請選擇 {base_days} 天的比較區間" if base_days else "請選擇比較區間"
+            elif base_days and cmp_days != base_days:
+                hint = f"⚠️ 比較期天數須與本期相同（本期 {base_days} 天，目前 {cmp_days} 天）"
+                cmp_s, cmp_e = None, None  # 視為無效，避免查詢
+            else:
+                hint = f"比較區間：{cmp_s} ~ {cmp_e}（{cmp_days} 天）"
         else:
             # 自動計算比較期
             cmp_s, cmp_e = _compute_compare_range(mode, base_start, base_end)
@@ -127,4 +142,79 @@ def register_callbacks(app):
             "compare": {"start": cmp_s, "end": cmp_e} if (cmp_s and cmp_e) else None
         }
         return style, cmp_s, cmp_e, disabled, hint, store
+
+    @app.callback(
+        Output("compare-config-store", "data", allow_duplicate=True),
+        Output("compare-hint", "children", allow_duplicate=True),
+        Output("compare-date-picker", "max_date_allowed"),
+        Input("compare-date-picker", "start_date"),
+        Input("compare-date-picker", "end_date"),
+        State("mode-switch", "value"),
+        State("date-range", "start_date"),
+        State("date-range", "end_date"),
+        State("compare-config-store", "data"),
+        prevent_initial_call=True,
+    )
+    def update_custom_compare_store(cmp_s, cmp_e, mode, base_start, base_end, current_store):
+        from datetime import timedelta
+        if mode != "custom":
+            return no_update, no_update, no_update
+        store = dict(current_store) if current_store else {}
+        store["mode"] = "custom"
+        store["base"] = {"start": base_start, "end": base_end}
+
+        base_days = _days_count(base_start, base_end)
+        cmp_days = _days_count(cmp_s, cmp_e)
+
+        # 限制最大結束日 = 比較開始 + (base_days - 1)
+        max_allowed = no_update
+        if cmp_s and base_days:
+            cmp_start_d = _parse(cmp_s)
+            if cmp_start_d:
+                max_allowed = (cmp_start_d + timedelta(days=base_days - 1)).isoformat()
+
+        if not (cmp_s and cmp_e):
+            store["compare"] = None
+            hint = f"請選擇 {base_days} 天的比較區間" if base_days else "請選擇比較區間"
+        elif base_days and cmp_days != base_days:
+            store["compare"] = None
+            hint = f"⚠️ 比較期天數須與本期相同（本期 {base_days} 天，目前 {cmp_days} 天）"
+        else:
+            store["compare"] = {"start": cmp_s, "end": cmp_e}
+            hint = f"比較區間：{cmp_s} ~ {cmp_e}（{cmp_days} 天）"
+        return store, hint, max_allowed
+
+    @app.callback(
+        Output("date-range", "start_date"),
+        Output("date-range", "end_date"),
+        Output("query-options", "value"),
+        Output("mode-switch", "value"),
+        Output("compare-date-picker", "start_date", allow_duplicate=True),
+        Output("compare-date-picker", "end_date", allow_duplicate=True),
+        Output("compare-config", "style", allow_duplicate=True),
+        Output("compare-hint", "children", allow_duplicate=True),
+        Output("compare-config-store", "data", allow_duplicate=True),
+        Output("result-ready", "data", allow_duplicate=True),
+        Output("charts-zone", "style", allow_duplicate=True),
+        Output("table-zone", "style", allow_duplicate=True),
+        Output("action-bar", "style", allow_duplicate=True),
+        Output("stats-summary", "style", allow_duplicate=True),
+        Output("result-line-chart", "style", allow_duplicate=True),
+        Input("reset-btn", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def reset_query(n_clicks):
+        if not n_clicks:
+            raise PreventUpdate
+        HIDE = {"display": "none"}
+        return (
+            None, None,             # date-range
+            [],                     # query-options checklist
+            "normal",               # mode-switch
+            None, None,             # compare-date-picker
+            HIDE, "",               # compare-config panel + hint
+            None,                   # compare-config-store
+            False,                  # result-ready
+            HIDE, HIDE, HIDE, HIDE, HIDE,  # zones
+        )
 

@@ -162,6 +162,14 @@ body { background: var(--bg); color: var(--text); }
 }
 #app-root .btn[disabled] { opacity: .5; cursor: not-allowed; }
 
+/* Secondary（清除按鈕） */
+#app-root .btn-secondary {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+#app-root .btn-secondary:hover { color: var(--text); border-color: var(--text); }
+
 /* Ghost buttons（日期切換列用） */
 #app-root .btn-ghost,
 #theme-root .date-nav-btn {
@@ -337,6 +345,11 @@ body { background: var(--bg); color: var(--text); }
   border: 1px solid color-mix(in lab, var(--text) 10%, transparent);
   margin: 12px 20px;
   padding: 0 16px 20px;
+}
+
+/* 隱藏上方分頁按鈕，只保留下方 */
+.previous-next-container:first-of-type:not(:last-of-type) {
+  display: none !important;
 }
 
 /* DataTable Export 按鈕改中文 */

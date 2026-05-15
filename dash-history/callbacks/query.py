@@ -30,7 +30,7 @@ warnings.simplefilter("ignore", MissingPivotFunction)
 def register_callbacks(app):
 
     @app.callback(
-        # ===== 一般模式輸出（14 個）=====
+        # ===== 一般模式輸出（15 個）=====
         Output("result-table", "data"),
         Output("result-table", "columns"),
         Output("result-line-chart", "figure"),
@@ -38,7 +38,8 @@ def register_callbacks(app):
         Output("result-table", "style_table"),
         Output("result-table", "style_header"),
         Output("result-table", "style_cell"),
-        Output("result-ready", "data"),
+        Output("result-table-wrapper", "style"),
+        Output("result-ready", "data", allow_duplicate=True),
         Output("avg-card", "children"),
         Output("median-card", "children"),
         Output("max-card", "children"),
@@ -151,16 +152,13 @@ from(bucket: "{influx_bucket_aggregated}")
 
             # result-table：若目前在比較模式，維持隱藏；否則換色
             is_compare_mode_now = (mode_value in {"mom", "yoy", "qoq", "custom"})
-            result_table_style = dict(table_styles["style_table"])
-            if is_compare_mode_now:
-                result_table_style["display"] = "none"
-
             return (
                 no_update, no_update,
                 fig, line_style,
-                result_table_style,                     # ★ 不會把隱藏狀態洗掉
+                table_styles["style_table"],            # result-table 只換色（wrapper 控制顯示）
                 table_styles["style_header"],
                 table_styles["style_cell"],
+                no_update,                              # result-table-wrapper.style 保持
                 no_update,                              # result-ready
                 no_update, no_update, no_update,
                 no_update, no_update, no_update,
@@ -185,6 +183,7 @@ from(bucket: "{influx_bucket_aggregated}")
         base_start, base_end = base.get("start"), base.get("end")
         comp_start, comp_end = comp.get("start"), comp.get("end")
         is_compare_mode = (mode_value in {"mom", "yoy", "qoq", "custom"})
+        use_relative_x = is_compare_mode and bool(comp_start) and bool(comp_end)
 
         if not base_start or not base_end or not selected_tags:
             raise PreventUpdate
@@ -197,7 +196,7 @@ from(bucket: "{influx_bucket_aggregated}")
 
         # ===== 本期 =====
         is_single_day = (base_start == base_end)
-        x_label = "時間（每小時）"
+        x_label = "相對時間（各期起點對齊）" if use_relative_x else "時間（每小時）"
         df_main = query_range(base_start, base_end, query_tags, query_api, single_day=is_single_day)
 
         if df_main.empty:
@@ -213,6 +212,7 @@ from(bucket: "{influx_bucket_aggregated}")
             return (
                 [], [], empty_fig, HIDE,
                 table_styles["style_table"], table_styles["style_header"], table_styles["style_cell"],
+                {"display": "block"},   # result-table-wrapper
                 False,
                 *EMPTY_SIX,
                 no_data_msg, SHOW,      # no-data-hint
@@ -254,14 +254,30 @@ from(bucket: "{influx_bucket_aggregated}")
             vertical_spacing=0.06,
         )
 
+        # 相對時間標籤：D1 00:00, D1 01:00, ..., D2 00:00, ...
+        n_main = len(df_main)
+        base_dates_list = df_main["_date"].tolist()
+
+        def _rel_label(i: int) -> str:
+            return f"D{i // 24 + 1} {i % 24:02d}:00"
+
+        relative_x = [_rel_label(i) for i in range(n_main)]
+        chart_x = relative_x if use_relative_x else base_dates_list
+
         for f in [c for c in df_main.columns if c != "_date"]:
             fig.add_trace(
                 go.Scatter(
-                    x=df_main["_date"], y=df_main[f].round(2),
+                    x=chart_x,
+                    y=df_main[f].round(2),
+                    customdata=base_dates_list if use_relative_x else None,
                     mode="lines+markers",
                     name=f"{tag_label_map.get(f, f)}（本期）",
                     legendgroup=f,
-                    hovertemplate="%{x}<br><b>%{y:.2f}</b><extra></extra>",
+                    hovertemplate=(
+                        "本期：%{customdata}<br><b>%{y:.2f}</b><extra></extra>"
+                        if use_relative_x else
+                        "%{x}<br><b>%{y:.2f}</b><extra></extra>"
+                    ),
                 ),
                 row=tag_row.get(f, 1), col=1,
             )
@@ -272,6 +288,7 @@ from(bucket: "{influx_bucket_aggregated}")
         normal_sum_style, compare_sum_style = SHOW, HIDE
         cmp_wrapper_style = HIDE
         result_table_style = table_styles["style_table"]
+        result_table_wrapper_style = SHOW
 
         no_data_msg = ""
         no_data_style = HIDE
@@ -289,21 +306,42 @@ from(bucket: "{influx_bucket_aggregated}")
                 no_data_style = SHOW
 
             if not df_comp.empty:
+                comp_dates = df_comp["_date"].tolist()
                 for f in [c for c in df_main.columns if c != "_date"]:
-                    # 對齊長度（用本期 x 軸）
                     y_cmp = pd.to_numeric(df_comp.get(f), errors="coerce").tolist() if f in df_comp.columns else []
-                    fig.add_trace(
-                        go.Scatter(
-                            x=df_main["_date"],
-                            y=[round(v, 2) if v is not None else None for v in (y_cmp[:len(df_main)] + [None]*max(0, len(df_main)-len(y_cmp)))],
-                            mode="lines+markers",
-                            name=f"{tag_label_map.get(f, f)}（比較期）",
-                            line=dict(dash="dash"),
-                            legendgroup=f,
-                            hovertemplate="%{x}<br><b>%{y:.2f}</b><extra></extra>",
-                        ),
-                        row=tag_row.get(f, 1), col=1,
-                    )
+                    n_cmp = min(len(y_cmp), n_main)
+                    if use_relative_x:
+                        # 相對 x 軸：各自畫到自己的資料結尾，不補 None
+                        fig.add_trace(
+                            go.Scatter(
+                                x=relative_x[:n_cmp],
+                                y=[round(v, 2) if pd.notna(v) else None for v in y_cmp[:n_cmp]],
+                                customdata=comp_dates[:n_cmp],
+                                mode="lines+markers",
+                                name=f"{tag_label_map.get(f, f)}（比較期）",
+                                line=dict(dash="dash"),
+                                legendgroup=f,
+                                hovertemplate="比較期：%{customdata}<br><b>%{y:.2f}</b><extra></extra>",
+                            ),
+                            row=tag_row.get(f, 1), col=1,
+                        )
+                    else:
+                        # 一般模式：對齊本期 x 軸，長度不足則補 None
+                        padded_y     = y_cmp[:n_main] + [None] * max(0, n_main - len(y_cmp))
+                        padded_dates = comp_dates[:n_main] + [None] * max(0, n_main - len(comp_dates))
+                        fig.add_trace(
+                            go.Scatter(
+                                x=base_dates_list,
+                                y=[round(v, 2) if v is not None else None for v in padded_y],
+                                customdata=padded_dates,
+                                mode="lines+markers",
+                                name=f"{tag_label_map.get(f, f)}（比較期）",
+                                line=dict(dash="dash"),
+                                legendgroup=f,
+                                hovertemplate="比較期：%{customdata}<br><b>%{y:.2f}</b><extra></extra>",
+                            ),
+                            row=tag_row.get(f, 1), col=1,
+                        )
                 # ===== 比較表格（本期 vs 比較期）=====
                 compare_fields = [c for c in df_main.columns if c != "_date" and c in df_comp.columns]
                 if compare_fields:
@@ -369,7 +407,7 @@ from(bucket: "{influx_bucket_aggregated}")
                     ]
 
                     # 切換顯示：隱藏一般表、顯示比較表；六卡隱藏、四卡顯示
-                    result_table_style = {**table_styles["style_table"], "display": "none"}
+                    result_table_wrapper_style = HIDE
                     cmp_wrapper_style = SHOW
                     normal_sum_style, compare_sum_style = HIDE, SHOW
 
@@ -377,7 +415,7 @@ from(bucket: "{influx_bucket_aggregated}")
         from utils.db_helpers import get_alarm_thresholds
         _severity_color = {"warning": "orange", "critical": "red"}
         _severity_label = {"warning": "警戒", "critical": "告警"}
-        x_range = df_main["_date"].tolist()
+        x_range = chart_x
         for rule in get_alarm_thresholds(query_tags):
             color = _severity_color.get(rule["severity"], "gray")
             unit_str = f" {rule['threshold_unit']}" if rule["threshold_unit"] else ""
@@ -420,11 +458,12 @@ from(bucket: "{influx_bucket_aggregated}")
         # ===== 關閉 Influx 連線 =====
         _influx_client.close()
 
-        # ===== 最終回傳（26 個輸出）=====
+        # ===== 最終回傳（27 個輸出）=====
         return (
             data, columns,
             fig, SHOW,
             result_table_style, table_styles["style_header"], table_styles["style_cell"],
+            result_table_wrapper_style,
             True,
             avg_card, median_card, max_card, min_card, count_card, sum_card,
 

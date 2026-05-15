@@ -117,16 +117,18 @@ type PressureDN900Props = {
   hideTitle?: boolean;
   pressureBefore?: number;
   pressureAfter?: number;
+  className?: string;
 };
 
 export default function PressureDN900({
   hideTitle = false,
   pressureBefore,
   pressureAfter,
+  className = "",
 }: PressureDN900Props) {
   return (
     <div
-      className={`flex min-h-[96px] w-[240px] shrink-0 flex-col rounded-[20px] px-3 ${hideTitle ? "pb-3 pt-0" : "py-3"}`}
+      className={`flex min-h-[96px] w-full min-w-0 flex-col rounded-[20px] px-3 ${hideTitle ? "pb-3 pt-0" : "py-3"} ${className}`}
     >
       {!hideTitle ? (
         <div className="mb-1 shrink-0">

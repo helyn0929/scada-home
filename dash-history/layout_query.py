@@ -90,9 +90,11 @@ def query_layout(table_styles=None):
 
             # ===== 查詢按鈕（獨立一行，靠右） =====
             html.Div(
-                style={"display": "flex", "justifyContent": "flex-end",
+                style={"display": "flex", "justifyContent": "flex-end", "gap": "10px",
                        "padding": "0 20px", "marginBottom": "10px"},
                 children=[
+                    html.Button("清除", id="reset-btn", n_clicks=0, className="btn btn-secondary",
+                                style={"minWidth": "100px"}),
                     html.Button("查詢", id="export-btn", n_clicks=0, className="btn",
                                 style={"minWidth": "120px"}),
                 ],
@@ -171,17 +173,22 @@ def query_layout(table_styles=None):
                         className="table-card",
                         style={"display": "none"},
                         children=[
-                            # 一般模式表格（原樣）
-                            dash_table.DataTable(
-                                id="result-table",
-                                columns=[],
-                                data=[],
-                                page_size=10,
-                                style_table=table_styles.get("style_table", {}),
-                                style_header=table_styles.get("style_header", {}),
-                                style_cell=table_styles.get("style_cell", {}),
+                            # 一般模式表格（包 wrapper 統一控制顯示/隱藏，避免分頁殘留）
+                            html.Div(
+                                id="result-table-wrapper",
+                                children=[
+                                    dash_table.DataTable(
+                                        id="result-table",
+                                        columns=[],
+                                        data=[],
+                                        page_size=24,
+                                        style_table=table_styles.get("style_table", {}),
+                                        style_header=table_styles.get("style_header", {}),
+                                        style_cell=table_styles.get("style_cell", {}),
+                                    ),
+                                ],
                             ),
-                            # 比較模式表格（新增：用 wrapper 控制顯示/隱藏）
+                            # 比較模式表格
                             html.Div(
                                 id="compare-table-wrapper",
                                 style={"display": "none"},
@@ -190,7 +197,7 @@ def query_layout(table_styles=None):
                                         id="compare-table",
                                         columns=[],
                                         data=[],
-                                        page_size=10,
+                                        page_size=24,
                                         style_table=table_styles.get("style_table", {}),
                                         style_header=table_styles.get("style_header", {}),
                                         style_cell=table_styles.get("style_cell", {}),

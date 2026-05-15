@@ -37,9 +37,10 @@ function pointsToPath(
 interface GeneratorVibrationProps {
   vibrationDE?: number;
   vibrationNDE?: number;
+  className?: string;
 }
 
-export default function GeneratorVibration({ vibrationDE, vibrationNDE }: GeneratorVibrationProps) {
+export default function GeneratorVibration({ vibrationDE, vibrationNDE, className = "" }: GeneratorVibrationProps) {
   const [dePoints, setDePoints] = useState<Array<{ x: number; y: number }>>([]);
   const [ndePoints, setNdePoints] = useState<Array<{ x: number; y: number }>>([]);
   const deLast = useRef<number | null>(null);
@@ -96,17 +97,16 @@ export default function GeneratorVibration({ vibrationDE, vibrationNDE }: Genera
   const ndePath = pointsToPath(ndePoints, chartWidth, chartHeight, left, bottom);
 
   return (
-    <div className="inline-flex h-[158px] w-fit max-w-[480px] shrink-0 flex-col justify-self-start overflow-hidden rounded-[20px] bg-[#D9D9D9]/15 px-3 py-3">
-      {/* Inner width = legend + chart; title bar matches that width */}
-      <div className="flex w-max min-w-0 flex-col gap-3">
+    <div className={`flex h-[158px] w-full min-w-0 flex-col overflow-hidden rounded-[20px] bg-[#D9D9D9]/15 px-3 py-3 ${className}`}>
+      <div className="flex w-full min-w-0 flex-col gap-3">
         <div className="w-fit shrink-0 rounded-[9px] bg-[#D9D9D9]/20 px-4 py-1.5 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]">
           <span className="font-semibold text-[15px] leading-[18px] text-white">
             Generator Vibration
           </span>
         </div>
 
-      {/* Chart area: legend + fixed-width SVG so card edge matches line chart edge */}
-      <div className="flex min-h-0 w-fit flex-row items-stretch gap-1">
+      {/* Chart area: legend + flexible SVG */}
+      <div className="flex min-h-0 w-full min-w-0 flex-row items-stretch gap-1">
         {/* DE / NDE stacked on left */}
         <div className="flex shrink-0 flex-col justify-center gap-2 py-0.5">
           <div className="flex items-center gap-1.5">
@@ -130,8 +130,7 @@ export default function GeneratorVibration({ vibrationDE, vibrationNDE }: Genera
             </span>
           </div>
         </div>
-        {/* SVG width ≈ 80% of 320px viewBox width — chart fills wrapper; no extra gap past plot */}
-        <div className="flex h-full w-[256px] shrink-0 flex-col">
+        <div className="flex h-full w-full min-w-0 flex-1 flex-col">
           <svg
             viewBox="0 0 320 100"
             className="block h-full w-full"

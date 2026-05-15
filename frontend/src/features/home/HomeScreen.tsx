@@ -36,9 +36,9 @@ const TURBINE_MODEL_POSITION: Vector3Tuple = [-12, 9, 10]
 const TURBINE_MODEL_ROTATION_Y = MathUtils.degToRad(-270)
 const TURBINE_ORBIT_CENTER_OFFSET: Vector3Tuple = [0, 0, 0]
 const TURBINE_ORBIT_TARGET: Vector3Tuple = vecAdd(TURBINE_MODEL_POSITION, TURBINE_ORBIT_CENTER_OFFSET)
-const TURBINE_INITIAL_CAMERA: Vector3Tuple = [-17.5757, 13.3817, 9.4059]
+const TURBINE_INITIAL_CAMERA: Vector3Tuple = [-15.7978, 11.6872, 10.8027]
 const TURBINE_MODEL_SCALE = 1
-const TURBINE_AUTO_FIT = true
+const TURBINE_AUTO_FIT = false
 const TURBINE_DEBUG_LOG_ORBIT = false
 const TURBINE_VIEW_LOCKED = true
 const TURBINE_FIT_MARGIN = 0.75
@@ -60,7 +60,7 @@ const STATUS_CONFIG = {
 }
 
 type PowerhouseHealth = { hydraulic: HealthLevel; electrical: HealthLevel; environment: HealthLevel }
-const INITIAL_HEALTH: PowerhouseHealth = { hydraulic: "normal", electrical: "normal", environment: "normal" }
+const INITIAL_HEALTH: PowerhouseHealth = { hydraulic: "unknown", electrical: "unknown", environment: "unknown" }
 
 export default function HomeScreen() {
   const { data, status, lastUpdated } = useLiveTelemetry("/api/telemetry")
@@ -225,7 +225,7 @@ export default function HomeScreen() {
                   orbitTarget={TURBINE_ORBIT_TARGET}
                   logViewAfterOrbit={TURBINE_DEBUG_LOG_ORBIT}
                   persistViewStorageKey="turbine-view"
-                  persistLayoutKey={`v2;pos:${TURBINE_MODEL_POSITION.join(",")};rotY:${TURBINE_MODEL_ROTATION_Y};scale:${TURBINE_MODEL_SCALE};fit:${TURBINE_FIT_MARGIN};fov:50`}
+                  persistLayoutKey={`v3;pos:${TURBINE_MODEL_POSITION.join(",")};rotY:${TURBINE_MODEL_ROTATION_Y};scale:${TURBINE_MODEL_SCALE};fit:${TURBINE_FIT_MARGIN};fov:50`}
                   viewLocked={TURBINE_VIEW_LOCKED}
                   activeCameraPreset={turbineScenePreset}
                   cameraPresets={turbineCameraPresets}
@@ -252,7 +252,7 @@ export default function HomeScreen() {
             >
               {/* Top sub-row: Pressure | Water | HPU1 | HPU2 | GeneratorPower */}
               <div className="flex flex-row gap-3">
-                <div className="flex flex-col justify-end gap-3 shrink-0">
+                <div className="flex flex-1 min-w-0 flex-col justify-end gap-3">
                   <PressureDN900Title />
                   <PressureDN900
                     hideTitle
@@ -260,7 +260,7 @@ export default function HomeScreen() {
                     pressureAfter={data?.pressureAfterDn900}
                   />
                 </div>
-                <div className="flex flex-col justify-end gap-3 shrink-0">
+                <div className="flex flex-1 min-w-0 flex-col justify-end gap-3">
                   <WaterQualityTestingTitle />
                   <WaterQualityTesting
                     hideTitle
@@ -268,7 +268,7 @@ export default function HomeScreen() {
                     waterQualityOut={data?.waterQualityOut}
                   />
                 </div>
-                <div className="flex flex-col justify-end gap-3 shrink-0">
+                <div className="flex flex-[0.65] min-w-0 flex-col justify-end gap-3">
                   <HpuStatusTitle name="HPU1" />
                   <HpuStatus
                     unit={1}
@@ -278,7 +278,7 @@ export default function HomeScreen() {
                     valveOpen={data?.hpu1QsdValveOpen}
                   />
                 </div>
-                <div className="flex flex-col justify-end gap-3 shrink-0">
+                <div className="flex flex-[0.65] min-w-0 flex-col justify-end gap-3">
                   <HpuStatusTitle name="HPU2" />
                   <HpuStatus
                     unit={2}
@@ -288,7 +288,7 @@ export default function HomeScreen() {
                     valveOpen={data?.hpu2Dn1400Open}
                   />
                 </div>
-                <div className="flex flex-col justify-end gap-3 min-w-0 flex-1">
+                <div className="flex flex-[1.4] min-w-0 flex-col justify-end gap-3">
                   <GeneratorPowerTitle />
                   <GeneratorPower
                     hideTitle
@@ -301,10 +301,12 @@ export default function HomeScreen() {
               {/* Bottom sub-row: Noise | Temperature | Vibration */}
               <div className="flex flex-row gap-3">
                 <NoiseMonitoring
+                  className="flex-1 min-w-0"
                   indoorNoise={data?.noiseIndoor}
                   outdoorNoise={data?.noiseOutdoor}
                 />
                 <TemperatureCard
+                  className="flex-[2] min-w-0"
                   tempWindingU={data?.tempWindingU}
                   tempWindingV={data?.tempWindingV}
                   tempWindingW={data?.tempWindingW}
@@ -312,6 +314,7 @@ export default function HomeScreen() {
                   tempEnvironment={data?.tempEnvironment}
                 />
                 <GeneratorVibration
+                  className="flex-1 min-w-0"
                   vibrationDE={data?.vibrationDE}
                   vibrationNDE={data?.vibrationNDE}
                 />

@@ -150,13 +150,14 @@ export function GeneratorPowerTitle() {
   );
 }
 
-type GeneratorPowerFullProps = GeneratorPowerProps & { hideTitle?: boolean };
+type GeneratorPowerFullProps = GeneratorPowerProps & { hideTitle?: boolean; className?: string };
 
 export default function GeneratorPower({
   apparentPowerS,
   activePowerP,
   reactivePowerQ,
   hideTitle = false,
+  className = "",
 }: GeneratorPowerFullProps) {
   const s = apparentPowerS ?? 0;
   const p = activePowerP ?? 0;
@@ -167,11 +168,11 @@ export default function GeneratorPower({
 
   return (
     <div
-      className={`flex w-full min-w-0 max-w-[480px] shrink-0 flex-col overflow-hidden rounded-[20px] px-3 ${
+      className={`flex w-full min-w-0 flex-col overflow-hidden rounded-[20px] px-3 ${
         hideTitle
           ? "min-h-[96px] pb-3 pt-0"
           : "h-[158px] py-3"
-      }`}
+      } ${className}`}
     >
       {!hideTitle ? (
         <div className="mb-1 shrink-0">

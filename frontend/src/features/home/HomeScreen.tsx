@@ -55,7 +55,8 @@ function format3Decimal(value: number | undefined | null) {
 
 const STATUS_CONFIG = {
   connecting: { color: "bg-yellow-400", label: "連線中" },
-  ok:         { color: "bg-green-400",  label: "即時" },
+  live:       { color: "bg-green-400",  label: "即時" },
+  down:       { color: "bg-red-500",    label: "資料中斷" },
   error:      { color: "bg-red-500",    label: "連線失敗" },
 }
 
@@ -63,7 +64,7 @@ type PowerhouseHealth = { hydraulic: HealthLevel; electrical: HealthLevel; envir
 const INITIAL_HEALTH: PowerhouseHealth = { hydraulic: "unknown", electrical: "unknown", environment: "unknown" }
 
 export default function HomeScreen() {
-  const { data, status, lastUpdated } = useLiveTelemetry("/api/telemetry")
+  const { data, status, dataTime } = useLiveTelemetry("/api/telemetry")
   const { color, label } = STATUS_CONFIG[status]
   const [turbineScenePreset, setTurbineScenePreset] =
     useState<TurbineScenePresetId>("default")
@@ -143,6 +144,7 @@ export default function HomeScreen() {
             <div className="flex-1 min-h-0">
               <ValveStatusMap
                 className="h-full"
+                down={status === "down" || status === "error"}
                 valves={data?.valves}
                 dn1400FillingInletOpen={data?.dn1400FillingInletOpen}
                 dn1400FillingOutletOpen={data?.dn1400FillingOutletOpen}
@@ -324,11 +326,11 @@ export default function HomeScreen() {
             {/* StatusBar — col 3 row 3, aligned to bottom */}
             <div style={{ gridColumn: 3, gridRow: 3, alignSelf: "end" }}>
               <div className="flex items-center gap-2.5 rounded-full bg-white/15 backdrop-blur-md border border-white/10 px-4 py-2 shadow-lg">
-                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${color} ${status === "ok" ? "animate-pulse" : ""}`} />
+                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${color} ${status === "live" ? "animate-pulse" : ""}`} />
                 <span className="text-[12px] font-semibold text-white leading-none">{label}</span>
-                {lastUpdated && (
+                {dataTime && (
                   <span className="text-[12px] font-medium text-white/70 tabular-nums leading-none">
-                    {lastUpdated.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                    {dataTime.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                   </span>
                 )}
               </div>

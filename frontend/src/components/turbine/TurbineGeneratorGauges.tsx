@@ -13,7 +13,7 @@ const WICKET_OPEN_MAX = 100;
 
 // Gauge operating ranges (tuned so the needle moves within the arc)
 const WATER_FLOW_MIN = 0;
-const WATER_FLOW_MAX = 2.5;
+const WATER_FLOW_MAX = 3.2;
 const GEN_RPM_MIN = 900;
 const GEN_RPM_MAX = 1205;
 const GEN_SPEED_PCT_MIN = 80;

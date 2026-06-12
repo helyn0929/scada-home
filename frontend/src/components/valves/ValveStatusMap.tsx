@@ -69,16 +69,18 @@ function ValveRow({
 
 interface ValveStatusMapProps {
   valves: {
-    dn800?: { open: boolean };
-    dn1400?: { open: boolean };
-    dn900?: { open: boolean };
-    dn1350?: { open: boolean; percent?: number };
-    dn1400D?: { open: boolean };
+    dn800?: { open: boolean | null };
+    dn1400?: { open: boolean | null };
+    dn900?: { open: boolean | null };
+    dn1350?: { open: boolean | null; percent?: number };
+    dn1400D?: { open: boolean | null };
   } | undefined;
   // Filling valve feedbacks
   dn1400FillingInletOpen?: boolean;
   dn1400FillingOutletOpen?: boolean;
   dn900FillingValveOpen?: boolean;
+  // 資料中斷：閥門狀態未知，不顯示開/關，整面板淡化並標示
+  down?: boolean;
   className?: string;
 }
 
@@ -87,6 +89,7 @@ export default function ValveStatusMap({
   dn1400FillingInletOpen,
   dn1400FillingOutletOpen,
   dn900FillingValveOpen,
+  down = false,
   className,
 }: ValveStatusMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -161,16 +164,30 @@ export default function ValveStatusMap({
           Valve Status Overview
         </span>
       </div>
-      <SvgRenderer
-        ref={containerRef}
-        raw={valveSvgRaw}
-        className="valve-svg-container"
-        onInsert={onSvgInsert}
-      />
-      <div className="shrink-0 px-3 py-2 flex flex-col gap-[6px] border-t border-white/10">
-        <ValveRow label="DN1400"  mainActive={dn1400Main}  fillingActive={dn1400Filling} />
-        <ValveRow label="DN900"   mainActive={dn900Main}   fillingActive={dn900Filling} />
-        <ValveRow label="DN1400D" mainActive={dn1400DMain} fillingActive={false} fillingAvailable={false} />
+      <div className="relative flex-1 min-h-0 flex flex-col">
+        <div
+          className="flex-1 min-h-0 flex flex-col transition-opacity duration-300"
+          style={{ opacity: down ? 0.3 : 1 }}
+        >
+          <SvgRenderer
+            ref={containerRef}
+            raw={valveSvgRaw}
+            className="valve-svg-container"
+            onInsert={onSvgInsert}
+          />
+          <div className="shrink-0 px-3 py-2 flex flex-col gap-[6px] border-t border-white/10">
+            <ValveRow label="DN1400"  mainActive={dn1400Main}  fillingActive={dn1400Filling} />
+            <ValveRow label="DN900"   mainActive={dn900Main}   fillingActive={dn900Filling} />
+            <ValveRow label="DN1400D" mainActive={dn1400DMain} fillingActive={false} fillingAvailable={false} />
+          </div>
+        </div>
+        {down && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="rounded-full bg-black/60 px-3 py-1 text-[12px] font-semibold text-white/90 border border-white/20">
+              資料中斷 · 狀態未知
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

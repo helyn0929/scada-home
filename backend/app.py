@@ -133,7 +133,7 @@ ALARM_MAPPING = {
 def view_home():
     """scada-home 首頁需要的所有資料，一次給齊"""
     global _influx_ok
-    raw = get_all_latest_values()
+    raw, data_time = get_all_latest_values()
     if not raw:
         if _influx_ok:
             app.logger.warning("InfluxDB 回傳空資料，請確認連線與 Node-RED 是否正常")
@@ -147,8 +147,12 @@ def view_home():
             app.logger.info("InfluxDB 資料恢復正常")
             _influx_ok = True
 
-    # 基本欄位轉換
+    # 資料新鮮度：以全域最新一筆的時間戳判定，前端據此顯示更新時間與連線燈
     data = {}
+    data["data_time"] = data_time.isoformat() if data_time else None
+    data["data_status"] = "live" if raw else "down"
+
+    # 基本欄位轉換
     for frontend_key, tag_code in TAG_MAPPING.items():
         data[frontend_key] = raw.get(tag_code)
 
@@ -184,10 +188,8 @@ def view_home():
     valves = {}
     for valve_name, tag_code in VALVE_MAPPING.items():
         val = raw.get(tag_code)
-        if val is not None:
-            valves[valve_name] = {"open": bool(val)}
-        else:
-            valves[valve_name] = {"open": False}
+        # 拿不到資料時回傳 None（未知），不要假設為「關閉」
+        valves[valve_name] = {"open": bool(val) if val is not None else None}
 
     # DN1350 額外加百分比（如果有的話）
     dn1350_pct = raw.get("VALVE_DN1350_PCT")

@@ -6,14 +6,6 @@ const MAX_POINTS = 80;
 const Y_MAX_MM_S = 5;
 const UPDATE_MS = 500;
 
-// Small visual jitter around the live telemetry value so the trace looks
-// alive between PLC polls. The center value is always the latest live reading
-// — this only smooths the path between updates, it doesn't fabricate readings.
-function jitterAround(centerLive: number): number {
-  const drift = (Math.random() - 0.5) * 0.15;
-  const next = centerLive + drift;
-  return Math.max(0, Math.min(Y_MAX_MM_S, next));
-}
 
 function pointsToPath(
   points: Array<{ x: number; y: number }>,
@@ -67,18 +59,14 @@ export default function GeneratorVibration({ vibrationDE, vibrationNDE, classNam
     if (!hasSeeded) return;
     const t = setInterval(() => {
       if (vibrationDE != null) {
-        const nextY = jitterAround(vibrationDE);
-        deLast.current = nextY;
         setDePoints((prev) => {
-          const arr = [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }];
+          const arr = [...prev.slice(1), { x: MAX_POINTS - 1, y: vibrationDE }];
           return arr.map((p, i) => ({ ...p, x: i }));
         });
       }
       if (vibrationNDE != null) {
-        const nextY = jitterAround(vibrationNDE);
-        ndeLast.current = nextY;
         setNdePoints((prev) => {
-          const arr = [...prev.slice(1), { x: MAX_POINTS - 1, y: nextY }];
+          const arr = [...prev.slice(1), { x: MAX_POINTS - 1, y: vibrationNDE }];
           return arr.map((p, i) => ({ ...p, x: i }));
         });
       }
@@ -116,7 +104,7 @@ export default function GeneratorVibration({ vibrationDE, vibrationNDE, classNam
             />
             <span className="text-[11px] font-semibold text-white">DE</span>
             <span className="w-[32px] text-right text-[11px] font-semibold tabular-nums" style={{ color: DE_COLOR }}>
-              {deLast.current != null ? deLast.current.toFixed(2) : "--"}
+              {vibrationDE != null ? vibrationDE.toFixed(2) : "--"}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -126,7 +114,7 @@ export default function GeneratorVibration({ vibrationDE, vibrationNDE, classNam
             />
             <span className="text-[11px] font-semibold text-white">NDE</span>
             <span className="w-[32px] text-right text-[11px] font-semibold tabular-nums" style={{ color: NDE_COLOR }}>
-              {ndeLast.current != null ? ndeLast.current.toFixed(2) : "--"}
+              {vibrationNDE != null ? vibrationNDE.toFixed(2) : "--"}
             </span>
           </div>
         </div>

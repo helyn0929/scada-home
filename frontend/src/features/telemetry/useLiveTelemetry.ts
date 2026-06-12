@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { TelemetryData } from "./types";
 
-export type ApiStatus = "connecting" | "ok" | "error";
+// connecting: 首次連線中；live: 資料新鮮；down: 連到後端但資料中斷；error: 連不到後端
+export type ApiStatus = "connecting" | "live" | "down" | "error";
 
 export function useLiveTelemetry(url: string) {
   const [data, setData] = useState<TelemetryData | null>(null);
   const [status, setStatus] = useState<ApiStatus>("connecting");
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  // 資料更新時間：取後端回傳的 data_time（最新一筆的時間戳），斷線時凍結最後一筆
+  const [dataTime, setDataTime] = useState<Date | null>(null);
 
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL || url;
@@ -23,11 +25,11 @@ export function useLiveTelemetry(url: string) {
         const res = await fetch(apiUrl);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
-        if (!ignore) {
-          setData({ ...json });
-          setStatus("ok");
-          setLastUpdated(new Date());
-        }
+        if (ignore) return;
+        setData({ ...json });
+        setStatus(json.data_status === "live" ? "live" : "down");
+        // 只在拿到新的資料時間時更新；斷線（data_time 為 null）時保留最後一次
+        if (json.data_time) setDataTime(new Date(json.data_time));
       } catch {
         if (!ignore) setStatus("error");
       }
@@ -42,5 +44,5 @@ export function useLiveTelemetry(url: string) {
     };
   }, [url]);
 
-  return { data, status, lastUpdated };
+  return { data, status, dataTime };
 }

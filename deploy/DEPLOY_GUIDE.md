@@ -149,7 +149,6 @@ cd C:\nginx
 start nginx
 ```
 5. 開瀏覽器 `http://localhost`，應該能看到前端畫面
-
 ### Step 9：設定 Node-RED flow
 
 1. 啟動 Node-RED：`node-red`

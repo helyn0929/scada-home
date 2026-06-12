@@ -86,7 +86,8 @@ def get_all_latest_values():
     查詢所有監測點的最新值
 
     Returns:
-        dict: {tag_code: value, ...}
+        (dict, datetime|None): ({tag_code: value, ...}, 全域最新一筆的 UTC 時間戳)
+        查無資料時回傳 ({}, None)
     """
     try:
         flux = f'''
@@ -103,13 +104,16 @@ def get_all_latest_values():
         tables = query_api.query(flux)
 
         result = {}
+        latest_ts = None
         for table in tables:
             for record in table.records:
                 tag_code = record.values.get("tag_code")
-                value = record.get_value()
-                result[tag_code] = value
+                result[tag_code] = record.get_value()
+                ts = record.get_time()
+                if ts is not None and (latest_ts is None or ts > latest_ts):
+                    latest_ts = ts
 
-        return result
+        return result, latest_ts
     except Exception as e:
         logger.error(f"最新值查詢失敗: {e}")
-        return {}
+        return {}, None

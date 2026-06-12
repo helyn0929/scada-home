@@ -1,5 +1,5 @@
 export interface ValveState {
-  open: boolean;
+  open: boolean | null;  // null = 資料中斷時的未知狀態
   percent?: number;
 }
 
@@ -12,6 +12,10 @@ export interface Valves {
 }
 
 export interface TelemetryData {
+  // 🔹 資料新鮮度
+  data_time?: string | null;          // 最新一筆資料的時間戳 (ISO, UTC)
+  data_status?: "live" | "down";      // 後端依全域最新更新判定
+
   // 🔹 發電相關
   power_kw?: number;
   energy_kwh?: number;

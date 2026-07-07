@@ -42,6 +42,8 @@ export function useLiveTelemetry(url: string) {
           dn1400D: { open: mainLineOpen },
           dn1350: { open: percent > 0, percent },
         },
+        pressureUpstreamDn1350: 6 + Math.random() * 8,
+        pressureDownstreamDn1350: 6 + Math.random() * 8,
         // Generator power: -2000..+2000 (kVA, kW, kvar)
         generatorApparentPowerS: -2000 + Math.random() * 4000,
         generatorActivePowerP: -2000 + Math.random() * 4000,
@@ -100,6 +102,8 @@ export function useLiveTelemetry(url: string) {
             generatorApparentPowerS: json.generatorApparentPowerS,
             generatorActivePowerP: json.generatorActivePowerP,
             generatorReactivePowerQ: json.generatorReactivePowerQ,
+            pressureUpstreamDn1350: json.pressureUpstreamDn1350,
+            pressureDownstreamDn1350: json.pressureDownstreamDn1350,
           });
         }
       } catch (err) {

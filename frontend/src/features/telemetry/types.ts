@@ -52,6 +52,10 @@ export interface TelemetryData {
   pressureUpstreamDn900?: number;    // bar
   pressureDownstreamDn900?: number;  // bar
 
+  // 🔹 Pressure DN1350
+  pressureUpstreamDn1350?: number;   // bar
+  pressureDownstreamDn1350?: number; // bar
+
   // 🔹 Oil in Water
   oilInWaterBeforeDn900?: number;   // ppm
   oilInWaterAfterDn1400d?: number;  // ppm

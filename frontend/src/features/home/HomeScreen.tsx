@@ -13,6 +13,7 @@ import TurbineGeneratorGauges, {
   PowerhouseStatusPanel,
 } from "@/components/turbine/TurbineGeneratorGauges"
 import PressureDN900, { PressureDN900Title } from "@/components/pressure/PressureDN900"
+import PressureDN1350, { PressureDN1350Title } from "@/components/pressure/PressureDN1350"
 import WaterQualityTesting, {
   WaterQualityTestingTitle,
 } from "@/components/water/WaterQualityTesting"
@@ -258,6 +259,15 @@ export default function HomeScreen() {
                     className="w-full"
                     upstream={data?.pressureUpstreamDn900}
                     downstream={data?.pressureDownstreamDn900}
+                  />
+                </div>
+                <div className="flex flex-1 min-w-0 flex-col justify-end gap-3">
+                  <PressureDN1350Title />
+                  <PressureDN1350
+                    hideTitle
+                    className="w-full"
+                    upstream={data?.pressureUpstreamDn1350}
+                    downstream={data?.pressureDownstreamDn1350}
                   />
                 </div>
                 <div className="flex flex-1 min-w-0 flex-col justify-end gap-3">

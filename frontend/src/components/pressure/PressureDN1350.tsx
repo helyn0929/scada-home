@@ -109,7 +109,7 @@ export function PressureDN1350Title() {
   return (
     <div className="inline-flex w-fit shrink-0 items-center rounded-[9px] bg-[#D9D9D9]/20 px-4 py-1.5 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]">
       <span className="whitespace-nowrap font-semibold text-[15px] leading-[18px] text-white">
-        Pressure Plunger Valve
+        Pressure DN1350
       </span>
     </div>
   );
@@ -153,8 +153,8 @@ export default function PressureDN1350({
         </div>
       ) : null}
       <div className="flex min-h-0 flex-1 flex-col justify-start gap-2">
-        <PressureBarRow line1="Before" line2="Plunger" value={pressureUpstream} />
-        <PressureBarRow line1="After" line2="Plunger" value={pressureDownstream} />
+        <PressureBarRow line1="Before" line2="DN1350" value={pressureUpstream} />
+        <PressureBarRow line1="After" line2="DN1350" value={pressureDownstream} />
       </div>
     </div>
   );

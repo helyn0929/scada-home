@@ -6,6 +6,8 @@ type TemperatureCardProps = {
   tempWindingW: number | undefined | null;
   tempControlPanel: number | undefined | null;
   tempEnvironment: number | undefined | null;
+  tempBearingDe?: number | null;
+  tempBearingNde?: number | null;
   className?: string;
 };
 
@@ -153,6 +155,8 @@ export default function TemperatureCard({
   tempWindingW,
   tempControlPanel,
   tempEnvironment,
+  tempBearingDe,
+  tempBearingNde,
   className,
 }: TemperatureCardProps) {
   return (
@@ -181,6 +185,22 @@ export default function TemperatureCard({
             <span className="text-center">U</span>
             <span className="text-center">V</span>
             <span className="text-center">W</span>
+          </div>
+        </div>
+
+        {/* Middle: Bearing DE & NDE */}
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="text-center text-[11px] font-semibold leading-[14px] text-white whitespace-nowrap">
+            Bearing
+          </span>
+          <div className="mb-0.5 h-px w-full border-t-2 border-white/60 mix-blend-overlay" />
+          <div className="grid w-full grid-cols-2 justify-items-center gap-x-1">
+            <GaugeDial value={tempBearingDe} />
+            <GaugeDial value={tempBearingNde} />
+          </div>
+          <div className="mt-0.5 grid w-full grid-cols-2 justify-items-center gap-x-1 text-[11px] font-semibold leading-[14px] text-white">
+            <span className="text-center">DE</span>
+            <span className="text-center">NDE</span>
           </div>
         </div>
 

@@ -30,6 +30,8 @@ export interface TelemetryData {
   tempWindingW?: number;
   tempControlPanel?: number;
   tempEnvironment?: number;
+  tempBearingDe?: number;   // °C, 0-200
+  tempBearingNde?: number;  // °C, 0-200
 
   // 🔹 閥件
   valves?: Valves;

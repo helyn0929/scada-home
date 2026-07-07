@@ -253,21 +253,21 @@ export default function HomeScreen() {
             >
               <div className="flex flex-row gap-3">
                 <div className="flex flex-1 min-w-0 flex-col justify-end gap-3">
-                  <PressureDN900Title />
-                  <PressureDN900
-                    hideTitle
-                    className="w-full"
-                    upstream={data?.pressureUpstreamDn900}
-                    downstream={data?.pressureDownstreamDn900}
-                  />
-                </div>
-                <div className="flex flex-1 min-w-0 flex-col justify-end gap-3">
                   <PressureDN1350Title />
                   <PressureDN1350
                     hideTitle
                     className="w-full"
                     upstream={data?.pressureUpstreamDn1350}
                     downstream={data?.pressureDownstreamDn1350}
+                  />
+                </div>
+                <div className="flex flex-1 min-w-0 flex-col justify-end gap-3">
+                  <PressureDN900Title />
+                  <PressureDN900
+                    hideTitle
+                    className="w-full"
+                    upstream={data?.pressureUpstreamDn900}
+                    downstream={data?.pressureDownstreamDn900}
                   />
                 </div>
                 <div className="flex flex-1 min-w-0 flex-col justify-end gap-3">
@@ -324,6 +324,8 @@ export default function HomeScreen() {
                   tempWindingW={data?.tempWindingW}
                   tempControlPanel={data?.tempControlPanel}
                   tempEnvironment={data?.tempEnvironment}
+                  tempBearingDe={data?.tempBearingDe}
+                  tempBearingNde={data?.tempBearingNde}
                 />
                 <GeneratorVibration
                   className="flex-1 min-w-0"

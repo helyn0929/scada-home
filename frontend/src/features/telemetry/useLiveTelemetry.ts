@@ -35,6 +35,8 @@ export function useLiveTelemetry(url: string) {
         tempWindingW: Math.random() * 200,
         tempControlPanel: Math.random() * 200,
         tempEnvironment: Math.random() * 200,
+        tempBearingDe: Math.random() * 200,
+        tempBearingNde: Math.random() * 200,
         valves: {
           dn800: { open: toggler(0) },
           dn900: { open: mainLineOpen },
@@ -98,6 +100,8 @@ export function useLiveTelemetry(url: string) {
             tempWindingW: temps.tempWindingW,
             tempControlPanel: temps.tempControlPanel,
             tempEnvironment: temps.tempEnvironment,
+            tempBearingDe: json.tempBearingDe,
+            tempBearingNde: json.tempBearingNde,
             valves: json.valves,
             generatorApparentPowerS: json.generatorApparentPowerS,
             generatorActivePowerP: json.generatorActivePowerP,

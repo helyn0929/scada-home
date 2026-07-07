@@ -228,26 +228,11 @@ export default function HomeScreen() {
               className="relative min-h-0 overflow-hidden rounded-[20px]"
               style={{ gridColumn: "1 / 3", gridRow: 2 }}
             >
-              <TurbineViewerErrorBoundary modelUrl={TURBINE_GLB_URL} className="h-full w-full">
-                <ScadaGlbViewer
-                  url={TURBINE_GLB_URL}
-                  className="h-full w-full"
-                  autoFit={TURBINE_AUTO_FIT}
-                  scale={TURBINE_MODEL_SCALE}
-                  cameraFov={50}
-                  fitMargin={TURBINE_FIT_MARGIN}
-                  initialCameraPosition={TURBINE_INITIAL_CAMERA}
-                  orbitTarget={TURBINE_ORBIT_TARGET}
-                  logViewAfterOrbit={TURBINE_DEBUG_LOG_ORBIT}
-                  persistViewStorageKey="turbine-view"
-                  persistLayoutKey={`pos:${TURBINE_MODEL_POSITION.join(",")};rotY:${TURBINE_MODEL_ROTATION_Y};scale:${TURBINE_MODEL_SCALE};fit:${TURBINE_FIT_MARGIN};fov:50`}
-                  viewLocked={TURBINE_VIEW_LOCKED}
-                  activeCameraPreset={turbineScenePreset}
-                  cameraPresets={turbineCameraPresets}
-                  modelPosition={TURBINE_MODEL_POSITION}
-                  modelRotationY={TURBINE_MODEL_ROTATION_Y}
-                />
-              </TurbineViewerErrorBoundary>
+              <img
+                src="/assets/models/turbineforscadahomev2.webp"
+                alt="Turbine model"
+                className="h-full w-full rounded-[20px] object-cover bg-[#2c2c30]"
+              />
               <div
                 className="pointer-events-none absolute inset-0 flex items-end justify-end p-4 select-none"
                 aria-hidden

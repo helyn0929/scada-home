@@ -1,10 +1,12 @@
-import React, { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 
 type Props = {
   children: ReactNode;
   /** Bumps when URL changes so a retry after adding the file remounts. */
   modelUrl: string;
   className?: string;
+  /** If set, shown as a full-bleed image when the GLB fails to load (for devices that can't run WebGL). */
+  fallbackImageUrl?: string;
 };
 
 type State = { error: Error | null };
@@ -31,6 +33,23 @@ export default class TurbineViewerErrorBoundary extends Component<Props, State> 
 
   render(): ReactNode {
     if (this.state.error) {
+      if (this.props.fallbackImageUrl) {
+        return (
+          <div
+            className={[
+              "rounded-[20px] bg-[#2c2c30] overflow-hidden",
+              this.props.className ?? "",
+            ].join(" ")}
+          >
+            <img
+              src={this.props.fallbackImageUrl}
+              alt="Turbine model"
+              className="h-full w-full object-contain"
+            />
+          </div>
+        );
+      }
+
       const msg = this.state.error.message;
       const looksLikeHtml =
         msg.includes("<!doctype") ||

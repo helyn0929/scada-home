@@ -198,9 +198,9 @@ export default function HomeScreen() {
                   noiseOutdoor: data?.noiseOutdoor,
                   tempControlPanel: data?.tempControlPanel,
                   tempEnvironment: data?.tempEnvironment,
-                  waterFlowCms: data?.waterFlowCms,
-                  wicketGatePct: data?.wicketGatePct,
-                  genRpm: data?.genRpm,
+                  waterFlowCms: data?.discharge_cms,
+                  wicketGatePct: data?.guideVanePct,
+                  genRpm: data?.genSpeedRpm,
                   genSpeedPct: data?.genSpeedPct,
                 }}
               />
@@ -257,8 +257,8 @@ export default function HomeScreen() {
                   <PressureDN1350
                     hideTitle
                     className="w-full"
-                    upstream={data?.pressureUpstreamDn1350}
-                    downstream={data?.pressureDownstreamDn1350}
+                    upstream={data?.pressureBeforeDn1350}
+                    downstream={data?.pressureAfterDn1350}
                   />
                 </div>
                 <div className="flex flex-1 min-w-0 flex-col justify-end gap-3">
@@ -266,8 +266,8 @@ export default function HomeScreen() {
                   <PressureDN900
                     hideTitle
                     className="w-full"
-                    upstream={data?.pressureUpstreamDn900}
-                    downstream={data?.pressureDownstreamDn900}
+                    upstream={data?.pressureBeforeDn900}
+                    downstream={data?.pressureAfterDn900}
                   />
                 </div>
                 <div className="flex flex-1 min-w-0 flex-col justify-end gap-3">
@@ -275,8 +275,8 @@ export default function HomeScreen() {
                   <WaterQualityTesting
                     hideTitle
                     className="w-full"
-                    beforeDn900={data?.oilInWaterBeforeDn900}
-                    afterDn1400d={data?.oilInWaterAfterDn1400d}
+                    beforeDn900={data?.waterQualityIn}
+                    afterDn1400d={data?.waterQualityOut}
                   />
                 </div>
                 <div className="flex flex-[0.65] min-w-0 flex-col justify-end gap-3">
@@ -329,8 +329,8 @@ export default function HomeScreen() {
                 />
                 <GeneratorVibration
                   className="flex-1 min-w-0"
-                  de={data?.vibrationDe}
-                  nde={data?.vibrationNde}
+                  de={data?.vibrationDE}
+                  nde={data?.vibrationNDE}
                 />
               </div>
             </div>

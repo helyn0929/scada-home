@@ -19,3 +19,75 @@ body {
   background: #000;
   color: #fff;
 }
+
+/* ------------------------------------------------------------------
+ * 手機版（< 768px）設計 token — 對應 design-mockups/mobile/MOBILE_DESIGN_SPEC.md §10
+ * 由 src/features/mobile/MobileShell.tsx 以 data-theme 切換；桌面版不使用
+ * 告警色不在這裡：一律來自 src/config/alarmThresholds.ts 的 ALARM_COLOR
+ * ------------------------------------------------------------------ */
+.m-shell {
+  --m-bg: #0A0C0F;
+  --m-card: #15181D;
+  --m-card-border: #262B33;
+  --m-card-shadow: none;
+  --m-card-radius: 16px;
+  --m-text: #F3F5F7;
+  --m-text-2: #A3ACB8;
+  --m-text-3: #8B95A1;
+  --m-accent: #22D3EE;
+  --m-accent-text: #67E8F9;
+  --m-track: #262B33;
+  --m-btn: #1A1E24;
+  --m-btn-border: #2A2F37;
+  --m-tabbar: #111418;
+  --m-tabbar-border: #262B33;
+  --m-tab-on-bg: transparent;
+  --m-tab-on-text: #22D3EE;
+  --m-alert-bg: rgba(248, 113, 113, 0.2);
+  --m-alert-text: #FECACA;
+  --m-ok-bg: #0F2A1E;
+  --m-ok-text: #4ADE80;
+  --m-muted-bg: #1A1E24;
+  --m-muted-dot: #6B7480;
+  font-family: Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  color-scheme: dark;
+}
+.m-shell[data-theme="light"] {
+  --m-bg: #F1F2F4;
+  --m-card: #FFFFFF;
+  --m-card-border: #ECEDF0;
+  --m-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --m-card-radius: 22px;
+  --m-text: #1F2328;
+  --m-text-2: #6B7280;
+  --m-text-3: #6B7280;
+  --m-accent: #06B6D4;
+  --m-accent-text: #0E7490;
+  --m-track: #ECEDF0;
+  --m-btn: #FFFFFF;
+  --m-btn-border: #ECEDF0;
+  --m-tabbar: #FFFFFF;
+  --m-tabbar-border: #ECEDF0;
+  --m-tab-on-bg: #E4F86B;
+  --m-tab-on-text: #1F2328;
+  --m-alert-bg: rgba(220, 38, 38, 0.1);
+  --m-alert-text: #991B1B;
+  --m-ok-bg: #DCFCE7;
+  --m-ok-text: #15803D; /* 設計稿 #16A34A 對比不足 4.5:1，加深 */
+  --m-muted-bg: #ECEDF0;
+  --m-muted-dot: #9CA3AF;
+  color-scheme: light;
+}
+
+/* 手機版捲軸：細、圓角，軌道上下各縮 120px，滑塊跟著變短（iPhone Safari 不支援自訂捲軸，維持系統樣式） */
+.m-shell ::-webkit-scrollbar {
+  width: 4px;
+}
+.m-shell ::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 120px;
+}
+.m-shell ::-webkit-scrollbar-thumb {
+  background: var(--m-muted-dot);
+  border-radius: 999px;
+}

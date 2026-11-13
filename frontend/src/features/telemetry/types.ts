@@ -1,6 +1,9 @@
+// 欄位名稱與主系統 power-plant-scada 的 src/types/telemetry.ts 一致（2026-11 對過的版本）
 export interface ValveState {
-  open: boolean;
+  open: boolean | null;  // null = 資料中斷時的未知狀態
   percent?: number;
+  // 僅 DN1350 使用：柱塞閥三態判讀（open=全開/closed=全關/partial=中間開度仍通水/unknown=兩極限矛盾）
+  state?: "open" | "closed" | "partial" | "unknown";
 }
 
 export interface Valves {
@@ -12,9 +15,14 @@ export interface Valves {
 }
 
 export interface TelemetryData {
+  // 🔹 資料新鮮度
+  data_time?: string | null;          // 最新一筆資料的時間戳 (ISO, UTC)
+  data_status?: "live" | "down";      // 後端依全域最新更新判定
+
   // 🔹 發電相關
   power_kw?: number;
   energy_kwh?: number;
+  energy_unit?: string;
   capacity_factor?: number;
 
   // 🔹 水文
@@ -30,59 +38,53 @@ export interface TelemetryData {
   tempWindingW?: number;
   tempControlPanel?: number;
   tempEnvironment?: number;
-  tempBearingDe?: number;   // °C, 0-200
-  tempBearingNde?: number;  // °C, 0-200
+  tempBearingDe?: number;   // °C, 0-200 軸承驅動端
+  tempBearingNde?: number;  // °C, 0-200 軸承受力端
 
   // 🔹 閥件
   valves?: Valves;
-
-  // 🔹 Filling valve feedbacks
-  dn1400FillingInletOpen?: boolean;    // Bool 1.6
-  dn1400FillingInletClosed?: boolean;  // Bool 1.7
-  dn1400FillingOutletOpen?: boolean;   // Bool 2.6
-  dn1400FillingOutletClosed?: boolean; // Bool 2.7
-  dn900FillingValveOpen?: boolean;     // Bool 3.6
-  dn900FillingValveClosed?: boolean;   // Bool 3.7
-
-  // 🔹 Turbine gauge dials
-  waterFlowCms?: number;   // 0–2.5 cms
-  wicketGatePct?: number;  // 0–100 %
-  genRpm?: number;         // rpm
-  genSpeedPct?: number;    // %
-
-  // 🔹 Pressure DN900
-  pressureUpstreamDn900?: number;    // bar
-  pressureDownstreamDn900?: number;  // bar
-
-  // 🔹 Pressure DN1350
-  pressureUpstreamDn1350?: number;   // bar
-  pressureDownstreamDn1350?: number; // bar
-
-  // 🔹 Oil in Water
-  oilInWaterBeforeDn900?: number;   // ppm
-  oilInWaterAfterDn1400d?: number;  // ppm
-
-  // 🔹 Generator vibration
-  vibrationDe?: number;   // mm/s
-  vibrationNde?: number;  // mm/s
 
   // 🔹 Generator power (card: S, P, Q, P.F)
   generatorApparentPowerS?: number; // kVA, -2000..+2000
   generatorActivePowerP?: number;   // kW, -2000..+2000
   generatorReactivePowerQ?: number; // kvar, -2000..+2000
 
-  // 🔹 Powerhouse alarms
-  overpressureValveAlarm?: boolean;  // Bool 5.7
-  upsAlarm?: boolean;                // Bool 5.3
-  generalShutdownAlarm?: boolean;    // Bool 5.4
+  // 🔹 振動
+  vibrationDE?: number;   // mm/s, 驅動端
+  vibrationNDE?: number;  // mm/s, 受力端
 
-  // 🔹 HPU1
-  hpu1Pressure?: number;      // bar
+  // 🔹 水輪發電機儀表
+  guideVanePct?: number;    // %, 導葉開度
+  genSpeedRpm?: number;     // rpm, 發電機轉速
+  genSpeedPct?: number;     // %, 發電機轉速百分比
+
+  // 🔹 壓力
+  pressureBeforeDn900?: number;  // bar, DN900 前壓力
+  pressureAfterDn900?: number;   // bar, DN900 後壓力
+  pressureBeforeDn1350?: number; // bar, DN1350 前壓力
+  pressureAfterDn1350?: number;  // bar, DN1350 後壓力
+
+  // 🔹 水質
+  waterQualityIn?: number;   // ppm, 入水水質
+  waterQualityOut?: number;  // ppm, 出水水質
+
+  // 🔹 HPU1 (turbine hydraulic)
+  hpu1Pressure?: number;       // bar
   hpu1MotorOn?: boolean;
   hpu1QsdValveOpen?: boolean;
 
-  // 🔹 HPU2
-  hpu2Pressure?: number;      // bar
+  // 🔹 HPU2 (bypass hydraulic)
+  hpu2Pressure?: number;       // bar
   hpu2MotorOn?: boolean;
   hpu2Dn1400Open?: boolean;
+
+  // 🔹 Filling valve feedbacks
+  dn1400FillingInletOpen?: boolean;
+  dn1400FillingOutletOpen?: boolean;
+  dn900FillingValveOpen?: boolean;
+
+  // 🔹 Powerhouse alarms
+  overpressureValveAlarm?: boolean;
+  upsAlarm?: boolean;
+  generalShutdownAlarm?: boolean;
 }

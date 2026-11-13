@@ -18,6 +18,8 @@ export interface AlarmThreshold {
   critAbove?: number;
   warnBelow?: number;
   critBelow?: number;
+  /** true：上限改為「大於等於」即觸發（同桌面元件寫法）；預設為「大於」 */
+  inclusive?: boolean;
 }
 
 export interface BoolAlarmRule {
@@ -28,31 +30,31 @@ export interface BoolAlarmRule {
 /**
  * key = TelemetryData 欄位名
  * 數值取自本 repo 桌面元件原本寫死的門檻（TurbineGeneratorGauges、PressureDN900／DN1350、WaterQualityTesting）；
- * 「超出量程即告警」的項目以 critBelow／critAbove 表示。注意：本函式為「大於／小於」，桌面元件部分為「大於等於」。
+ * 「超出量程即告警」的項目以 critBelow／critAbove 表示。比較方式與桌面元件一致：標 inclusive 者為「大於等於」，其餘為「大於」；下限一律「小於」。
  */
 const NUMERIC_THRESHOLDS: Record<string, AlarmThreshold> = {
   // 電氣（TurbineGeneratorGauges）
   genSpeedRpm: { critBelow: 1080, critAbove: 1205 },
   genSpeedPct: { critBelow: 90 },
-  tempWindingU: { warnAbove: 100, critAbove: 120 },
-  tempWindingV: { warnAbove: 100, critAbove: 120 },
-  tempWindingW: { warnAbove: 100, critAbove: 120 },
+  tempWindingU: { warnAbove: 100, critAbove: 120, inclusive: true },
+  tempWindingV: { warnAbove: 100, critAbove: 120, inclusive: true },
+  tempWindingW: { warnAbove: 100, critAbove: 120, inclusive: true },
   // 水力（TurbineGeneratorGauges：超出儀表量程視為告警）
   discharge_cms: { critBelow: 0, critAbove: 2.5 },
   guideVanePct: { critBelow: 0, critAbove: 100 },
   // 環境（TurbineGeneratorGauges）
-  tempControlPanel: { warnAbove: 45, critAbove: 60 },
-  tempEnvironment: { warnAbove: 35, critAbove: 40 },
-  noiseIndoor: { warnAbove: 85, critAbove: 95 },
-  noiseOutdoor: { warnAbove: 70, critAbove: 80 },
+  tempControlPanel: { warnAbove: 45, critAbove: 60, inclusive: true },
+  tempEnvironment: { warnAbove: 35, critAbove: 40, inclusive: true },
+  noiseIndoor: { warnAbove: 85, critAbove: 95, inclusive: true },
+  noiseOutdoor: { warnAbove: 70, critAbove: 80, inclusive: true },
   // 管路壓力（PressureDN1350／DN900：低於 5.25 bar 變紅）
   pressureBeforeDn1350: { critBelow: 5.25 },
   pressureAfterDn1350: { critBelow: 5.25 },
   pressureBeforeDn900: { critBelow: 5.25 },
   pressureAfterDn900: { critBelow: 5.25 },
-  // 水中含油（WaterQualityTesting：0.49 ppm 以上變紅）
-  waterQualityIn: { critAbove: 0.49 },
-  waterQualityOut: { critAbove: 0.49 },
+  // 水中含油（WaterQualityTesting：0.49 ppm 以上含 0.49 變紅）
+  waterQualityIn: { critAbove: 0.49, inclusive: true },
+  waterQualityOut: { critAbove: 0.49, inclusive: true },
 };
 const BOOL_ALARM_RULES: Record<string, BoolAlarmRule> = {};
 
@@ -61,9 +63,10 @@ export function getAlarmLevel(field: string, value: number | null | undefined): 
   if (value == null || Number.isNaN(value)) return "normal";
   const t = NUMERIC_THRESHOLDS[field];
   if (!t) return "normal";
-  if (t.critAbove != null && value > t.critAbove) return "critical";
+  const above = (limit: number) => (t.inclusive ? value >= limit : value > limit);
+  if (t.critAbove != null && above(t.critAbove)) return "critical";
   if (t.critBelow != null && value < t.critBelow) return "critical";
-  if (t.warnAbove != null && value > t.warnAbove) return "warning";
+  if (t.warnAbove != null && above(t.warnAbove)) return "warning";
   if (t.warnBelow != null && value < t.warnBelow) return "warning";
   return "normal";
 }
